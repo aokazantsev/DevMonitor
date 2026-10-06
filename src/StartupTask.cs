@@ -1,0 +1,126 @@
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Security;
+using System.Security.Principal;
+using System.Text;
+
+namespace DevMonitor
+{
+    internal static class StartupTask
+    {
+        public const string TaskName = "DevMonitor";
+
+        private const int CommandTimeoutMs = 15000;
+        private const int CancelledByUser = 1223;
+        private const string LogonDelay = "PT20S";
+
+        public static bool IsEnabled()
+        {
+            return RunSchtasks("/Query /TN \"" + TaskName + "\"", false) == 0;
+        }
+
+        public static string Enable(string executablePath)
+        {
+            string definitionPath = Path.Combine(Path.GetTempPath(), TaskName + "-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            try
+            {
+                File.WriteAllText(definitionPath, Definition(executablePath), Encoding.Unicode);
+                int exitCode = RunSchtasks("/Create /TN \"" + TaskName + "\" /XML \"" + definitionPath + "\" /F", !IsElevated());
+                return Explain(exitCode, "включить автозапуск");
+            }
+            finally
+            {
+                File.Delete(definitionPath);
+            }
+        }
+
+        public static string Disable()
+        {
+            int exitCode = RunSchtasks("/Delete /TN \"" + TaskName + "\" /F", !IsElevated());
+            return Explain(exitCode, "выключить автозапуск");
+        }
+
+        public static string Definition(string executablePath)
+        {
+            string user;
+            using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+            {
+                user = SecurityElement.Escape(identity.Name);
+            }
+            string command = SecurityElement.Escape(executablePath);
+            string directory = SecurityElement.Escape(Path.GetDirectoryName(executablePath));
+            return "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n"
+                + "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n"
+                + "  <RegistrationInfo><Description>DevMonitor: запуск при входе в Windows</Description></RegistrationInfo>\n"
+                + "  <Triggers>\n"
+                + "    <LogonTrigger><Enabled>true</Enabled><UserId>" + user + "</UserId><Delay>" + LogonDelay + "</Delay></LogonTrigger>\n"
+                + "  </Triggers>\n"
+                + "  <Principals>\n"
+                + "    <Principal id=\"Author\"><UserId>" + user + "</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal>\n"
+                + "  </Principals>\n"
+                + "  <Settings>\n"
+                + "    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n"
+                + "    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n"
+                + "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n"
+                + "    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>\n"
+                + "    <AllowHardTerminate>true</AllowHardTerminate>\n"
+                + "    <StartWhenAvailable>false</StartWhenAvailable>\n"
+                + "    <Enabled>true</Enabled>\n"
+                + "  </Settings>\n"
+                + "  <Actions Context=\"Author\">\n"
+                + "    <Exec><Command>\"" + command + "\"</Command><WorkingDirectory>" + directory + "</WorkingDirectory></Exec>\n"
+                + "  </Actions>\n"
+                + "</Task>\n";
+        }
+
+        private static bool IsElevated()
+        {
+            using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+            {
+                return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+        }
+
+        private static int RunSchtasks(string arguments, bool elevate)
+        {
+            var start = new ProcessStartInfo("schtasks.exe", arguments) { WindowStyle = ProcessWindowStyle.Hidden };
+            if (elevate)
+            {
+                start.UseShellExecute = true;
+                start.Verb = "runas";
+            }
+            else
+            {
+                start.UseShellExecute = false;
+                start.CreateNoWindow = true;
+                start.RedirectStandardOutput = true;
+                start.RedirectStandardError = true;
+            }
+            try
+            {
+                using (Process process = Process.Start(start))
+                {
+                    if (!elevate)
+                    {
+                        process.StandardOutput.ReadToEnd();
+                        process.StandardError.ReadToEnd();
+                    }
+                    return process.WaitForExit(CommandTimeoutMs) ? process.ExitCode : -1;
+                }
+            }
+            catch (Win32Exception error)
+            {
+                return error.NativeErrorCode == CancelledByUser ? CancelledByUser : -1;
+            }
+        }
+
+        private static string Explain(int exitCode, string action)
+        {
+            if (exitCode == 0) return null;
+            if (exitCode == CancelledByUser) return "Не удалось " + action + ": окно UAC отклонено.";
+            return "Не удалось " + action + " (schtasks, код " + exitCode + ").";
+        }
+    }
+}

@@ -1,0 +1,198 @@
+# Справочник железа DevMonitor: модель и пороги цвета температуры.
+# Формат строки: тип;модель;янтарный от, °C;красный от, °C;откуда цифры
+# Тип — CPU или GPU. Строки с # и пустые строки пропускаются. Разделитель — точка с запятой.
+# Правило для CPU: янтарный = TjMax − 15, красный = TjMax − 5 (TjMax — предел производителя, на нём троттлинг).
+# Правило для NVIDIA: красный = максимум по спецификации − 3; янтарный = 83, но не выше красного − 4.
+#   83 °C — распространённая цель GPU Boost (со слов форума NVIDIA; в спецификациях её нет).
+# Значения сверены с сайтами производителей 24.09.2026: Intel — ark (страницы intel.cn, intel.com из РФ не открывается),
+#   AMD — amd.com (Max. Operating Temperature), NVIDIA — nvidia.com (Maximum GPU Temperature).
+# Ноутбучные NVIDIA (…Laptop GPU): максимум NVIDIA не публикует — его задаёт производитель ноутбука. Для них вместо
+#   чисел стоит auto: при запуске DevMonitor берёт из драйвера «Max Operating Temp» и «Target Temperature» этого
+#   ноутбука и считает пороги по тому же правилу (целевая вместо 83).
+# В списке только то, что DevMonitor умеет читать. CPU — семейства, которые распознаёт LibreHardwareMonitor 0.9.6
+#   (сверено по исходнику IntelCpu.cs: Alder/Raptor/Meteor/Arrow/Lunar Lake; AMD Zen 3/4/5), модуль PawnIO IntelMSR
+#   моделей не ограничивает и разрешает читать регистры температуры. Core Ultra 200U (Arrow Lake-U) LHM 0.9.6 не
+#   распознаёт — их здесь нет. GPU — только NVIDIA (драйвер NVML); AMD Radeon и Intel Arc не читаются.
+# Новую модель можно дописать сюда руками; выбрать — трей → Настройки, применится со следующего запуска.
+
+# Intel Core 12-го поколения (Alder Lake, 2021–2022)
+CPU;Intel Core i3-12100 / 12100F;85;95;TjMax 100 °C
+CPU;Intel Core i5-12400 / 12400F;85;95;TjMax 100 °C
+CPU;Intel Core i5-12600K / 12600KF;85;95;TjMax 100 °C
+CPU;Intel Core i7-12700 / 12700F;85;95;TjMax 100 °C
+CPU;Intel Core i7-12700K / 12700KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-12900K / 12900KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-12900KS;75;85;TjMax 90 °C
+
+# Intel Core 13-го поколения (Raptor Lake, 2022–2023)
+CPU;Intel Core i3-13100 / 13100F;85;95;TjMax 100 °C
+CPU;Intel Core i5-13400 / 13400F;85;95;TjMax 100 °C
+CPU;Intel Core i5-13600K / 13600KF;85;95;TjMax 100 °C
+CPU;Intel Core i7-13700 / 13700F;85;95;TjMax 100 °C
+CPU;Intel Core i7-13700K / 13700KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-13900K / 13900KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-13900KS;85;95;TjMax 100 °C
+
+# Intel Core 14-го поколения (Raptor Lake Refresh, 2023–2024)
+CPU;Intel Core i3-14100 / 14100F;85;95;TjMax 100 °C
+CPU;Intel Core i5-14400 / 14400F;85;95;TjMax 100 °C
+CPU;Intel Core i5-14600K / 14600KF;85;95;TjMax 100 °C
+CPU;Intel Core i7-14700 / 14700F;85;95;TjMax 100 °C
+CPU;Intel Core i7-14700K / 14700KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-14900K / 14900KF;85;95;TjMax 100 °C
+CPU;Intel Core i9-14900KS;85;95;TjMax 100 °C
+
+# Intel Core Ultra 200S (Arrow Lake, 2024–2025)
+CPU;Intel Core Ultra 5 225 / 225F;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 5 235;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 5 245K / 245KF;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 7 265 / 265F;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 7 265K / 265KF;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 9 285;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 9 285K;90;100;TjMax 105 °C
+
+# Intel Core 12-го поколения, ноутбуки H / HX (Alder Lake)
+CPU;Intel Core i5-12450H;85;95;TjMax 100 °C
+CPU;Intel Core i5-12500H;85;95;TjMax 100 °C
+CPU;Intel Core i7-12650H;85;95;TjMax 100 °C
+CPU;Intel Core i7-12700H;85;95;TjMax 100 °C
+CPU;Intel Core i7-12800H;85;95;TjMax 100 °C
+CPU;Intel Core i9-12900H;85;95;TjMax 100 °C
+CPU;Intel Core i5-12600HX;85;95;TjMax 100 °C
+CPU;Intel Core i7-12800HX;85;95;TjMax 100 °C
+CPU;Intel Core i9-12900HX;85;95;TjMax 100 °C
+CPU;Intel Core i9-12950HX;85;95;TjMax 100 °C
+
+# Intel Core 13-го поколения, ноутбуки H / HX (Raptor Lake)
+CPU;Intel Core i5-13420H;85;95;TjMax 100 °C
+CPU;Intel Core i5-13500H;85;95;TjMax 100 °C
+CPU;Intel Core i7-13620H;85;95;TjMax 100 °C
+CPU;Intel Core i7-13700H;85;95;TjMax 100 °C
+CPU;Intel Core i9-13900H;85;95;TjMax 100 °C
+CPU;Intel Core i5-13450HX;85;95;TjMax 100 °C
+CPU;Intel Core i5-13500HX;85;95;TjMax 100 °C
+CPU;Intel Core i7-13650HX;85;95;TjMax 100 °C
+CPU;Intel Core i7-13700HX;85;95;TjMax 100 °C
+CPU;Intel Core i9-13900HX;85;95;TjMax 100 °C
+CPU;Intel Core i9-13980HX;85;95;TjMax 100 °C
+
+# Intel Core 14-го поколения, ноутбуки HX (Raptor Lake Refresh)
+CPU;Intel Core i5-14450HX;85;95;TjMax 100 °C
+CPU;Intel Core i7-14650HX;85;95;TjMax 100 °C
+CPU;Intel Core i7-14700HX;85;95;TjMax 100 °C
+CPU;Intel Core i9-14900HX;85;95;TjMax 100 °C
+
+# Intel Core Ultra серии 1, ноутбуки H (Meteor Lake)
+CPU;Intel Core Ultra 5 125H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 5 135H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 7 155H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 7 165H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 9 185H;95;105;TjMax 110 °C
+
+# Intel Core Ultra серии 2, ноутбуки H (Arrow Lake-H)
+CPU;Intel Core Ultra 5 225H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 5 235H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 7 255H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 7 265H;95;105;TjMax 110 °C
+CPU;Intel Core Ultra 9 285H;95;105;TjMax 110 °C
+
+# Intel Core Ultra серии 2, ноутбуки HX (Arrow Lake-HX)
+CPU;Intel Core Ultra 5 245HX;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 7 255HX;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 9 275HX;90;100;TjMax 105 °C
+CPU;Intel Core Ultra 9 285HX;90;100;TjMax 105 °C
+
+# Intel Core Ultra серии 2, ноутбуки V (Lunar Lake)
+CPU;Intel Core Ultra 5 226V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 5 228V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 5 236V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 5 238V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 7 256V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 7 258V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 7 266V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 7 268V;85;95;TjMax 100 °C
+CPU;Intel Core Ultra 9 288V;85;95;TjMax 100 °C
+
+# AMD Ryzen 5000 (Zen 3, AM4)
+CPU;AMD Ryzen 5 5600;75;85;TjMax 90 °C
+CPU;AMD Ryzen 5 5600X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 5 5600G;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 5700G;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 5700X;75;85;TjMax 90 °C
+CPU;AMD Ryzen 7 5800X;75;85;TjMax 90 °C
+CPU;AMD Ryzen 7 5800X3D;75;85;TjMax 90 °C
+CPU;AMD Ryzen 9 5900X;75;85;TjMax 90 °C
+CPU;AMD Ryzen 9 5950X;75;85;TjMax 90 °C
+
+# AMD Ryzen 7000 (Zen 4, AM5) — штатно работают до 95 °C под полной нагрузкой
+CPU;AMD Ryzen 5 7600 / 7600X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 7700 / 7700X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 7800X3D;74;84;TjMax 89 °C
+CPU;AMD Ryzen 9 7900 / 7900X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 7900X3D;74;84;TjMax 89 °C
+CPU;AMD Ryzen 9 7950X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 7950X3D;74;84;TjMax 89 °C
+
+# AMD Ryzen 8000G (Zen 4, APU)
+CPU;AMD Ryzen 5 8600G;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 8700G;80;90;TjMax 95 °C
+
+# AMD Ryzen 9000 (Zen 5, AM5)
+CPU;AMD Ryzen 5 9600 / 9600X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 9700X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 7 9800X3D;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 9900X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 9900X3D;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 9950X;80;90;TjMax 95 °C
+CPU;AMD Ryzen 9 9950X3D;80;90;TjMax 95 °C
+
+# NVIDIA GeForce RTX 30 (Ampere)
+GPU;NVIDIA GeForce RTX 3050;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3060;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3060 Ti;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3070;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3070 Ti;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3080;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3080 Ti;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3090;83;90;максимум 93 °C
+GPU;NVIDIA GeForce RTX 3090 Ti;83;89;максимум 92 °C
+
+# NVIDIA GeForce RTX 40 (Ada Lovelace)
+GPU;NVIDIA GeForce RTX 4060;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4060 Ti;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4070;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4070 SUPER;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4070 Ti;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4070 Ti SUPER;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4080;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4080 SUPER;83;87;максимум 90 °C
+GPU;NVIDIA GeForce RTX 4090;83;87;максимум 90 °C
+
+# NVIDIA GeForce RTX 50 (Blackwell, 2025) — максимум у каждой модели свой
+GPU;NVIDIA GeForce RTX 5050;80;84;максимум 87 °C
+GPU;NVIDIA GeForce RTX 5060;82;86;максимум 89 °C
+GPU;NVIDIA GeForce RTX 5060 Ti;80;84;максимум 87 °C
+GPU;NVIDIA GeForce RTX 5070;78;82;максимум 85 °C
+GPU;NVIDIA GeForce RTX 5070 Ti;81;85;максимум 88 °C
+GPU;NVIDIA GeForce RTX 5080;81;85;максимум 88 °C
+GPU;NVIDIA GeForce RTX 5090;83;87;максимум 90 °C
+
+# NVIDIA GeForce RTX 30 / 40 / 50, ноутбуки — пороги из драйвера этого ноутбука
+GPU;NVIDIA GeForce RTX 3050 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3050 Ti Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3060 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3070 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3070 Ti Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3080 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 3080 Ti Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 4050 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 4060 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 4070 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 4080 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 4090 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5050 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5060 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5070 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5070 Ti Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5080 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука
+GPU;NVIDIA GeForce RTX 5090 Laptop GPU;auto;auto;максимум задаёт производитель ноутбука

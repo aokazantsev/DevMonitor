@@ -1,0 +1,10 @@
+DevMonitor.exe
+DevMonitor.old.exe
+DevMonitor.exe.config
+Uninstall.exe
+data/
+settings.txt
+position.txt
+installer/obj/
+installer/redist/
+dist/
