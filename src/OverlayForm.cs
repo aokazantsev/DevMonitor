@@ -292,6 +292,7 @@ namespace DevMonitor
             menu.Items.Add("Настройки", null, delegate { ShowSettings(); });
             startupItem.Click += delegate { ToggleStartup(); };
             menu.Items.Add(startupItem);
+            menu.Items.Add("О приложении…", null, delegate { AboutForm.ShowSingle(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Выход", null, delegate { Close(); });
             menu.Opening += delegate

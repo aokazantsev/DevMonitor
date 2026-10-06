@@ -24,6 +24,9 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
 
 ## Проверка изменений
 
+- История и настройки живут в `%LOCALAPPDATA%\DevMonitor`, а не рядом с exe. Обвязка
+  `GuideShots` кормит `HistoryRecorder` синтетикой — запущенная как есть, она допишет её в настоящую
+  историю пользователя. Снимать отдельные окна отдельной обвязкой без `HistoryRecorder`.
 - Интерфейс проверять снимками: отдельная обвязка (`/main:` другой класс), своя папка с копией
   `hardware.csv` и синтетической историей (`installer\guide\source\fake_data.py`), `DrawToBitmap` →
   PNG → посмотреть. Реальные `data\`, `settings.txt`, `position.txt` пользователя не трогать.
