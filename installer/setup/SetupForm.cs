@@ -18,6 +18,7 @@ namespace DevMonitor.Setup
         private readonly Button browseButton = new Button();
         private readonly CheckBox shortcutBox = new CheckBox();
         private readonly CheckBox driverBox = new CheckBox();
+        private readonly CheckBox startupBox = new CheckBox();
         private readonly Button installButton = new Button();
         private readonly Button launchButton = new Button();
         private readonly Button closeButton = new Button();
@@ -108,6 +109,11 @@ namespace DevMonitor.Setup
             shortcutBox.AutoSize = true;
             panel.Controls.Add(shortcutBox);
             panel.Controls.Add(Hint("Ярлык запускает DevMonitor от администратора — иначе нет температуры CPU.", width));
+            startupBox.Text = "Запускать при входе в Windows";
+            startupBox.Checked = true;
+            startupBox.AutoSize = true;
+            startupBox.Margin = new Padding(0, unit / 2, 0, 0);
+            panel.Controls.Add(startupBox);
             bool hasDriver = PawnIoDriver.IsInstalled();
             driverBox.Text = hasDriver ? "Драйвер PawnIO уже установлен" : "Установить драйвер PawnIO";
             driverBox.Checked = !hasDriver;
@@ -201,7 +207,8 @@ namespace DevMonitor.Setup
                 TargetDirectory = Path.GetFullPath(folderBox.Text),
                 CreatesShortcut = shortcutBox.Checked,
                 RegistersUninstall = true,
-                InstallsDriver = driverBox.Enabled && driverBox.Checked
+                InstallsDriver = driverBox.Enabled && driverBox.Checked,
+                EnablesStartup = startupBox.Checked
             };
             SetEditable(false);
             installation = new Installation(options, (percent, message) => worker.ReportProgress(percent, message));
@@ -241,6 +248,7 @@ namespace DevMonitor.Setup
             folderBox.Enabled = isEditable;
             browseButton.Enabled = isEditable;
             shortcutBox.Enabled = isEditable;
+            startupBox.Enabled = isEditable;
             driverBox.Enabled = isEditable && !PawnIoDriver.IsInstalled();
             installButton.Enabled = isEditable;
             closeButton.Enabled = isEditable;

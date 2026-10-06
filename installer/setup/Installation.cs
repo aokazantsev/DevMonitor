@@ -66,10 +66,15 @@ namespace DevMonitor.Setup
                         + Path.Combine(target, AppIdentity.PawnIoSetupRelativePath));
                 }
             }
-            if (StartupTask.IsEnabled())
+            if (options.EnablesStartup)
             {
-                report(98, "Автозапуск — на новую папку…");
+                report(98, "Автозапуск при входе в Windows…");
                 string startupProblem = StartupTask.Enable(Path.Combine(target, AppIdentity.ExecutableName));
+                if (startupProblem != null) warnings.Add(startupProblem);
+            }
+            else if (StartupTask.IsEnabled())
+            {
+                string startupProblem = StartupTask.Disable();
                 if (startupProblem != null) warnings.Add(startupProblem);
             }
             report(100, "Готово.");

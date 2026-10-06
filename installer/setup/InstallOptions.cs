@@ -6,5 +6,6 @@ namespace DevMonitor.Setup
         public bool CreatesShortcut;
         public bool RegistersUninstall;
         public bool InstallsDriver;
+        public bool EnablesStartup;
     }
 }
