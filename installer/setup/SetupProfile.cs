@@ -9,6 +9,7 @@ namespace DevMonitor
     {
         private const string ShortcutKey = "shortcut";
         private const string DriverKey = "driver";
+        private const string ResetSettingsKey = "resetSettings";
 
         public const string Intro =
             "Оверлей поверх всех окон: загрузка и температура CPU и GPU, ОЗУ, видеопамять, память Android Studio, "
@@ -46,6 +47,14 @@ namespace DevMonitor
                 },
                 new SetupOption
                 {
+                    Key = ResetSettingsKey,
+                    Text = "Сбросить настройки",
+                    Hint = "Выбор процессора и видеокарты и положение окна вернутся к стандартным. История показателей и журнал "
+                        + "сохранятся. Помогает, если сбой вызван настройками.",
+                    Checked = false
+                },
+                new SetupOption
+                {
                     Key = CrashReportConsent.OptionKey,
                     Text = "Отправлять автору отчёты о сбоях",
                     Hint = "В отчёт попадает журнал программы, а в нём — имя пользователя и компьютера Windows и путь к программе. "
@@ -66,8 +75,20 @@ namespace DevMonitor
 
         public static void BeforeExtract(InstallRequest request, Action<int, string> report, List<string> notes)
         {
+            if (request.Has(ResetSettingsKey))
+            {
+                DeleteSetting("settings.txt");
+                DeleteSetting("position.txt");
+                SetupLog.Append("settings reset");
+            }
             CrashReportConsent.Set(request.Has(CrashReportConsent.OptionKey));
             SetupLog.Append("crash reports: " + request.Has(CrashReportConsent.OptionKey));
+        }
+
+        private static void DeleteSetting(string name)
+        {
+            string path = Path.Combine(AppIdentity.DataDirectory, name);
+            if (File.Exists(path)) File.Delete(path);
         }
 
         public static void AfterExtract(InstallRequest request, Action<int, string> report, List<string> notes)

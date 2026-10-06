@@ -311,6 +311,7 @@ namespace DevMonitor
             menu.Items.Add("Журнал", null, delegate { OpenLog(); });
             startupItem.Click += delegate { ToggleStartup(); };
             menu.Items.Add(startupItem);
+            menu.Items.Add("Проверить обновление…", null, delegate { UpdateForm.ShowSingle(); });
             menu.Items.Add("О приложении…", null, delegate { AboutForm.ShowSingle(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Выход", null, delegate { Close(); });
