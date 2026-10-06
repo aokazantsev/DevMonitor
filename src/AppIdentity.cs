@@ -6,7 +6,7 @@ namespace DevMonitor
     internal static class AppIdentity
     {
         public const string Name = "DevMonitor";
-        public const string Version = "1.9";
+        public const string Version = "1.10";
         public const string ExecutableName = "DevMonitor.exe";
         public const string ProcessName = "DevMonitor";
         public const string UninstallerName = "Uninstall.exe";

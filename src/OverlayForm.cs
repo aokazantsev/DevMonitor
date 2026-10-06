@@ -121,6 +121,12 @@ namespace DevMonitor
             refreshTimer.Start();
         }
 
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button == MouseButtons.Right) trayIcon.ContextMenuStrip.Show(this, e.Location);
+        }
+
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
