@@ -1,10 +1,14 @@
 using System;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 
 namespace DevMonitor
 {
     internal static class NvidiaTemperatureLimits
     {
+        public const string GuardName = "gpu-limits";
+
         private const int NvmlSuccess = 0;
         private const int ThresholdGpuMax = 3;
         private const int ThresholdTarget = 5;
@@ -21,10 +25,19 @@ namespace DevMonitor
         [DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetTemperatureThreshold")]
         private static extern int NvmlGetThreshold(IntPtr device, int threshold, out uint temperature);
 
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
         public static bool TryRead(out float maximum, out float? target)
         {
             maximum = 0;
             target = null;
+            string blockedStep = SensorGuard.BlockedStep(GuardName);
+            if (blockedStep != null)
+            {
+                AppLog.Append("nvidia limits: skipped, previous run stopped at " + blockedStep);
+                return false;
+            }
+            SensorGuard.Enter(GuardName, "чтение порогов температуры NVIDIA");
             try
             {
                 if (NvmlInit() != NvmlSuccess) return false;
@@ -47,9 +60,14 @@ namespace DevMonitor
             {
                 return false;
             }
-            catch (EntryPointNotFoundException)
+            catch (Exception error)
             {
+                AppLog.Append("nvidia limits: " + error.GetType().Name + ": " + error.Message);
                 return false;
+            }
+            finally
+            {
+                SensorGuard.Leave(GuardName);
             }
         }
     }

@@ -27,6 +27,9 @@ namespace DevMonitor
                 catch (InvalidOperationException)
                 {
                 }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                }
                 finally
                 {
                     process.Dispose();

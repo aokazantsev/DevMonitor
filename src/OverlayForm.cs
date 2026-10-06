@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -66,6 +68,11 @@ namespace DevMonitor
         private readonly NotifyIcon trayIcon = new NotifyIcon();
         private readonly ToolStripMenuItem toggleItem = new ToolStripMenuItem();
         private readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Запускать при входе в Windows");
+        private readonly ToolStripMenuItem sensorProblemItem = new ToolStripMenuItem { Enabled = false };
+        private readonly ToolStripMenuItem retrySensorsItem = new ToolStripMenuItem("Проверить датчики снова");
+        private readonly ToolStripSeparator sensorSeparator = new ToolStripSeparator();
+        private DateTime lastSlowTickLogUtc = DateTime.MinValue;
+        private const int SlowTickMs = 2000;
         private bool? isStartupEnabled;
         private const int TrayTextLimit = 63;
         private const string TrayIconResource = "DevMonitor.app.ico";
@@ -153,7 +160,13 @@ namespace DevMonitor
 
         private void OnRefreshTick(object sender, EventArgs e)
         {
+            var watch = Stopwatch.StartNew();
             MetricsSnapshot snapshot = collector.Collect();
+            if (watch.ElapsedMilliseconds > SlowTickMs && DateTime.UtcNow - lastSlowTickLogUtc > TimeSpan.FromMinutes(1))
+            {
+                lastSlowTickLogUtc = DateTime.UtcNow;
+                AppLog.Append("slow sensor read: " + watch.ElapsedMilliseconds + " ms");
+            }
             recorder.Record(snapshot, DateTime.Now);
             List<List<MetricRow>> groups = MetricRowsFormatter.Format(snapshot);
             UpdateTrayText(groups);
@@ -286,11 +299,16 @@ namespace DevMonitor
         private ContextMenuStrip BuildMenu()
         {
             var menu = new ContextMenuStrip();
+            retrySensorsItem.Click += delegate { RetrySensors(); };
+            menu.Items.Add(sensorProblemItem);
+            menu.Items.Add(retrySensorsItem);
+            menu.Items.Add(sensorSeparator);
             toggleItem.Click += delegate { ToggleOverlay(); };
             menu.Items.Add(toggleItem);
             menu.Items.Add("Статистика…", null, delegate { ShowStatistics(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Настройки…", null, delegate { ShowSettings(); });
+            menu.Items.Add("Журнал", null, delegate { OpenLog(); });
             startupItem.Click += delegate { ToggleStartup(); };
             menu.Items.Add(startupItem);
             menu.Items.Add("О приложении…", null, delegate { AboutForm.ShowSingle(); });
@@ -299,10 +317,36 @@ namespace DevMonitor
             menu.Opening += delegate
             {
                 toggleItem.Text = Visible ? "Свернуть в трей" : "Развернуть";
+                string problem = SensorProblem();
+                sensorProblemItem.Text = problem ?? "";
+                sensorProblemItem.Visible = problem != null;
+                retrySensorsItem.Visible = problem != null;
+                sensorSeparator.Visible = problem != null;
                 if (!isStartupEnabled.HasValue) isStartupEnabled = Autostart.IsEnabled();
                 startupItem.Checked = isStartupEnabled.Value;
             };
             return menu;
+        }
+
+        private string SensorProblem()
+        {
+            var problems = new List<string>();
+            if (collector.CpuTemperatureProblem != null) problems.Add("Температура CPU " + collector.CpuTemperatureProblem);
+            if (collector.GpuProblem != null) problems.Add("Видеокарта NVIDIA " + collector.GpuProblem);
+            return problems.Count == 0 ? null : string.Join(Environment.NewLine, problems.ToArray());
+        }
+
+        private void RetrySensors()
+        {
+            collector.RetrySensors();
+            lastSignature = null;
+            OnRefreshTick(this, EventArgs.Empty);
+        }
+
+        private static void OpenLog()
+        {
+            if (!File.Exists(AppLog.FilePath)) AppLog.Append("log opened");
+            Process.Start(new ProcessStartInfo("notepad.exe", "\"" + AppLog.FilePath + "\"") { UseShellExecute = false });
         }
 
         private void OnTrayIconClick(object sender, MouseEventArgs e)

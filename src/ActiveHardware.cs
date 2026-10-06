@@ -21,6 +21,8 @@ namespace DevMonitor
             AppSettings settings = AppSettings.Load();
             Cpu = Choose(catalog, HardwareKind.Cpu, settings.CpuProfileName, new[] { InstalledHardware.ProcessorName() }) ?? FallbackCpu;
             Gpu = WithResolvedZones(Choose(catalog, HardwareKind.Gpu, settings.GpuProfileName, InstalledHardware.DisplayAdapterNames()) ?? FallbackGpu);
+            AppLog.Append("hardware: cpu=" + Cpu.Name + " (" + (settings.CpuProfileName == null ? "detected" : "from settings") + ")"
+                + ", gpu=" + Gpu.Name + " (" + (settings.GpuProfileName == null ? "detected" : "from settings") + ")");
         }
 
         private static HardwareProfile Choose(List<HardwareProfile> catalog, HardwareKind kind, string configuredName, IEnumerable<string> installedNames)
