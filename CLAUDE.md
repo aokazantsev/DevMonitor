@@ -24,17 +24,13 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
 
 ## Проверка изменений
 
-- История и настройки живут в `%LOCALAPPDATA%\DevMonitor`, а не рядом с exe. Обвязка
-  `GuideShots` кормит `HistoryRecorder` синтетикой — запущенная как есть, она допишет её в настоящую
-  историю пользователя. Снимать отдельные окна отдельной обвязкой без `HistoryRecorder`.
-- Интерфейс проверять снимками: отдельная обвязка (`/main:` другой класс), своя папка с копией
-  `hardware.csv` и синтетической историей (`installer\guide\source\fake_data.py`), `DrawToBitmap` →
-  PNG → посмотреть. Реальные `data\`, `settings.txt`, `position.txt` пользователя не трогать.
-- Скриншоты инструкции установщика — `installer\guide\*.png`, снимаются
-  `installer\guide\source\GuideShots.cs`. Поменял интерфейс — переснять.
+- История и настройки живут в `%LOCALAPPDATA%\DevMonitor`, а не рядом с exe. Обвязка для снимков
+  не должна создавать `HistoryRecorder` и `OverlayForm`: они пишут в настоящую историю пользователя.
+- Интерфейс проверять снимками: отдельная обвязка (свой `Main`), окно → `DrawToBitmap` или
+  `CopyFromScreen` → PNG → посмотреть. Скриншоты README — `docs\*.png`, поменял интерфейс — переснять.
 - Нагрузку мерить: CPU-время процесса за 60 с (цель — доли процента), private-память.
-- Установщик по-настоящему не запускать (ставит драйвер, ярлык, реестр). Ядро распаковки проверять
-  обвязкой с `InstallOptions` без ярлыка, реестра и драйвера, в папку scratchpad.
+- Установщик по-настоящему не запускать (ставит драйвер, ярлык, реестр) — это делает пользователь.
+  Окно установщика проверять обвязкой без запроса прав.
 
 ## Правила кода
 
@@ -55,5 +51,28 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
   (в окружении Claude Code cmd не ищет в текущей папке).
 - PowerShell-обёртка над `.cmd` со `start` висит до закрытия программы — собирать с `nostart`.
 - `taskkill` из обычной консоли не убивает процесс, запущенный от администратора.
-- В сборку установщика не должны попасть `data\`, `settings.txt`, `position.txt`, `*.old.exe`,
-  `installer\obj\` — это проверяет `installer\make-payload.ps1`.
+- В установщик попадает только перечисленное в `installer\payload.txt`.
+
+## Общее с другими pet-проектами
+
+Проект — один из трёх pet-проектов (ClaudeVpnGuard, DevMonitor, ClaudeGlow), они устроены одинаково:
+похожий интерфейс, одинаковые установщик, деинсталлятор, порядок меню и код общих частей.
+
+- **Общие файлы** — одинаковые во всех трёх, отличается только `namespace`:
+  `installer\setup\{SetupForm, Installation, InstallTarget, Payload, SetupOption, SetupField,
+  InstallRequest, SetupProgram}.cs`, `installer\common\{UninstallRegistration, RunningApp}.cs`,
+  `installer\uninstall\UninstallProgram.cs`, `src\AboutForm.cs`. `build.cmd`, `build-installer.cmd`,
+  `installer\make-payload.ps1` отличаются только переменными в начале. Поменял общий файл — та же
+  правка в двух других проектах.
+- **Своё у проекта:** `src\AppIdentity.cs` (имя, версия, ссылки, пути), `src\Autostart.cs` (задача
+  Планировщика или ключ Run), `installer\setup\SetupProfile.cs` (тексты, поля, галочки, свои шаги),
+  `installer\uninstall\UninstallProfile.cs`, `installer\payload.txt` (что ставится).
+- **Меню трея:** блок состояния; действия приложения; «Настройки…», «Журнал» (если есть),
+  «Запускать при входе в Windows», «О приложении…»; «Выход».
+- **Установщик:** права администратора, выбор папки (по умолчанию `C:\Program Files\<Имя>`), галочка
+  автозапуска, сам останавливает запущенную копию, после установки запускает программу. Регистрация
+  в «Приложениях» — в HKLM. Деинсталлятор сам закрывает программу и удаляет её данные.
+- **Любая правка доводится до конца:** версия в `AppIdentity.Version` и трёх `AssemblyInfo.cs`, запись
+  в `CHANGELOG.md`, сборка `build-installer.cmd`, проверка Защитником, коммит и push, Release на
+  GitHub с установщиком, при необходимости — README, скриншоты в `docs\` и страница на
+  aokazantsev.ru/pets.

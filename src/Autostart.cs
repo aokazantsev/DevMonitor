@@ -8,27 +8,23 @@ using System.Text;
 
 namespace DevMonitor
 {
-    internal static class StartupTask
+    internal static class Autostart
     {
-        public const string TaskName = "DevMonitor";
-
         private const int CommandTimeoutMs = 15000;
         private const int CancelledByUser = 1223;
-        private const string LogonDelay = "PT20S";
 
         public static bool IsEnabled()
         {
-            return RunSchtasks("/Query /TN \"" + TaskName + "\"", false) == 0;
+            return RunSchtasks("/Query /TN \"" + AppIdentity.Name + "\"", false) == 0;
         }
 
         public static string Enable(string executablePath)
         {
-            string definitionPath = Path.Combine(Path.GetTempPath(), TaskName + "-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            string definitionPath = Path.Combine(Path.GetTempPath(), AppIdentity.Name + "-task-" + Guid.NewGuid().ToString("N") + ".xml");
             try
             {
                 File.WriteAllText(definitionPath, Definition(executablePath), Encoding.Unicode);
-                int exitCode = RunSchtasks("/Create /TN \"" + TaskName + "\" /XML \"" + definitionPath + "\" /F", !IsElevated());
-                return Explain(exitCode, "включить автозапуск");
+                return Explain(RunSchtasks("/Create /TN \"" + AppIdentity.Name + "\" /XML \"" + definitionPath + "\" /F", !IsElevated()), "включить автозапуск");
             }
             finally
             {
@@ -38,11 +34,11 @@ namespace DevMonitor
 
         public static string Disable()
         {
-            int exitCode = RunSchtasks("/Delete /TN \"" + TaskName + "\" /F", !IsElevated());
-            return Explain(exitCode, "выключить автозапуск");
+            if (!IsEnabled()) return null;
+            return Explain(RunSchtasks("/Delete /TN \"" + AppIdentity.Name + "\" /F", !IsElevated()), "выключить автозапуск");
         }
 
-        public static string Definition(string executablePath)
+        private static string Definition(string executablePath)
         {
             string user;
             using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
@@ -53,9 +49,9 @@ namespace DevMonitor
             string directory = SecurityElement.Escape(Path.GetDirectoryName(executablePath));
             return "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n"
                 + "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n"
-                + "  <RegistrationInfo><Description>DevMonitor: запуск при входе в Windows</Description></RegistrationInfo>\n"
+                + "  <RegistrationInfo><Description>" + AppIdentity.Name + ": запуск при входе в Windows</Description></RegistrationInfo>\n"
                 + "  <Triggers>\n"
-                + "    <LogonTrigger><Enabled>true</Enabled><UserId>" + user + "</UserId><Delay>" + LogonDelay + "</Delay></LogonTrigger>\n"
+                + "    <LogonTrigger><Enabled>true</Enabled><UserId>" + user + "</UserId><Delay>" + AppIdentity.AutostartDelay + "</Delay></LogonTrigger>\n"
                 + "  </Triggers>\n"
                 + "  <Principals>\n"
                 + "    <Principal id=\"Author\"><UserId>" + user + "</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal>\n"
@@ -66,7 +62,8 @@ namespace DevMonitor
                 + "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n"
                 + "    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>\n"
                 + "    <AllowHardTerminate>true</AllowHardTerminate>\n"
-                + "    <StartWhenAvailable>false</StartWhenAvailable>\n"
+                + "    <StartWhenAvailable>true</StartWhenAvailable>\n"
+                + "    <RestartOnFailure><Interval>PT1M</Interval><Count>10</Count></RestartOnFailure>\n"
                 + "    <Enabled>true</Enabled>\n"
                 + "  </Settings>\n"
                 + "  <Actions Context=\"Author\">\n"

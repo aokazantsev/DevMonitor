@@ -1,14 +1,35 @@
+using System;
+using System.ComponentModel;
 using System.Diagnostics;
 
-namespace DevMonitor.Setup
+namespace DevMonitor
 {
     internal static class RunningApp
     {
-        public static bool IsRunning()
+        private const int ExitWaitMs = 5000;
+
+        public static bool Stop()
         {
-            Process[] processes = Process.GetProcessesByName(AppIdentity.ProcessName);
-            foreach (Process process in processes) process.Dispose();
-            return processes.Length > 0;
+            bool stoppedAll = true;
+            foreach (Process process in Process.GetProcessesByName(AppIdentity.ProcessName))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        process.Kill();
+                        if (!process.WaitForExit(ExitWaitMs)) stoppedAll = false;
+                    }
+                    catch (Win32Exception)
+                    {
+                        stoppedAll = false;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                    }
+                }
+            }
+            return stoppedAll;
         }
     }
 }

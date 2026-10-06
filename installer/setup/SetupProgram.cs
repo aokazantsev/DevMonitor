@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace DevMonitor.Setup
+namespace DevMonitor
 {
     internal static class SetupProgram
     {

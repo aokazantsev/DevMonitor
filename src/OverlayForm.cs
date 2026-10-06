@@ -288,8 +288,9 @@ namespace DevMonitor
             var menu = new ContextMenuStrip();
             toggleItem.Click += delegate { ToggleOverlay(); };
             menu.Items.Add(toggleItem);
-            menu.Items.Add("Статистика", null, delegate { ShowStatistics(); });
-            menu.Items.Add("Настройки", null, delegate { ShowSettings(); });
+            menu.Items.Add("Статистика…", null, delegate { ShowStatistics(); });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Настройки…", null, delegate { ShowSettings(); });
             startupItem.Click += delegate { ToggleStartup(); };
             menu.Items.Add(startupItem);
             menu.Items.Add("О приложении…", null, delegate { AboutForm.ShowSingle(); });
@@ -298,7 +299,7 @@ namespace DevMonitor
             menu.Opening += delegate
             {
                 toggleItem.Text = Visible ? "Свернуть в трей" : "Развернуть";
-                if (!isStartupEnabled.HasValue) isStartupEnabled = StartupTask.IsEnabled();
+                if (!isStartupEnabled.HasValue) isStartupEnabled = Autostart.IsEnabled();
                 startupItem.Checked = isStartupEnabled.Value;
             };
             return menu;
@@ -350,9 +351,9 @@ namespace DevMonitor
 
         private void ToggleStartup()
         {
-            bool wasEnabled = StartupTask.IsEnabled();
-            string problem = wasEnabled ? StartupTask.Disable() : StartupTask.Enable(Application.ExecutablePath);
-            isStartupEnabled = StartupTask.IsEnabled();
+            bool wasEnabled = Autostart.IsEnabled();
+            string problem = wasEnabled ? Autostart.Disable() : Autostart.Enable(Application.ExecutablePath);
+            isStartupEnabled = Autostart.IsEnabled();
             if (problem != null)
             {
                 MessageBox.Show(problem, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);

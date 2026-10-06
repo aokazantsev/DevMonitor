@@ -1,0 +1,10 @@
+DevMonitor.exe
+DevMonitor.exe.config
+Uninstall.exe
+README.md
+LICENSE
+CHANGELOG.md
+THIRD_PARTY_NOTICES.md
+hardware.csv
+lib
+installer\redist\PawnIO_setup.exe

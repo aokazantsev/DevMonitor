@@ -1,4 +1,6 @@
-param([Parameter(Mandatory = $true)][string]$Output)
+param([Parameter(Mandatory = $true)][string]$Root)
+
+$Output = Join-Path $Root 'installer' | Join-Path -ChildPath 'redist' | Join-Path -ChildPath 'PawnIO_setup.exe'
 
 $ErrorActionPreference = 'Stop'
 $url = 'https://github.com/namazso/PawnIO.Setup/releases/download/2.2.0/PawnIO_setup.exe'

@@ -5,8 +5,7 @@ namespace DevMonitor
 {
     internal static class UserDataPaths
     {
-        public static readonly string Directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DevMonitor");
+        public static readonly string Directory = AppIdentity.DataDirectory;
 
         public static string Settings
         {

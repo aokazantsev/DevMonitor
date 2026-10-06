@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace DevMonitor.Setup
+namespace DevMonitor
 {
     internal static class DesktopShortcut
     {

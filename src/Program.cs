@@ -11,7 +11,7 @@ namespace DevMonitor
         private static void Main()
         {
             bool isFirstInstance;
-            using (new Mutex(true, "DevMonitor.SingleInstance", out isFirstInstance))
+            using (new Mutex(true, AppIdentity.SingleInstanceMutex, out isFirstInstance))
             {
                 if (!isFirstInstance) return;
                 using (Process current = Process.GetCurrentProcess())

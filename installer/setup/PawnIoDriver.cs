@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.Win32;
 
-namespace DevMonitor.Setup
+namespace DevMonitor
 {
     internal static class PawnIoDriver
     {
