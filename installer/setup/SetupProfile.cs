@@ -43,12 +43,30 @@ namespace DevMonitor
                     Hint = "Драйвер читает температуру процессора. Откроется его собственный установщик.",
                     Checked = !hasDriver,
                     Enabled = !hasDriver
+                },
+                new SetupOption
+                {
+                    Key = CrashReportConsent.OptionKey,
+                    Text = "Отправлять автору отчёты о сбоях",
+                    Hint = "В текст ошибки могут попасть пути к файлам с именем пользователя Windows. "
+                        + "Не включай, если это запрещают правила твоей компании.",
+                    DetailsTitle = "Что уходит в отчёте",
+                    Details = "Отчёт уходит один раз — при падении программы — на aokazantsev.ru (сервер в России), "
+                        + "без повторных попыток:\n"
+                        + "• версия программы, Windows и .NET;\n"
+                        + "• текст ошибки со стеком вызовов и журнал падений %LOCALAPPDATA%\\DevMonitor\\crash.log;\n"
+                        + "• IP-адрес, с которого пришёл отчёт.\n"
+                        + "История показателей и настройки не отправляются. Отчёты видит только автор, хранятся последние 50 МБ. "
+                        + "Изменить выбор — переустановить программу.",
+                    Checked = CrashReportConsent.IsGiven
                 }
             };
         }
 
         public static void BeforeExtract(InstallRequest request, Action<int, string> report, List<string> notes)
         {
+            CrashReportConsent.Set(request.Has(CrashReportConsent.OptionKey));
+            SetupLog.Append("crash reports: " + request.Has(CrashReportConsent.OptionKey));
         }
 
         public static void AfterExtract(InstallRequest request, Action<int, string> report, List<string> notes)

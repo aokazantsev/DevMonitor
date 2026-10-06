@@ -14,8 +14,14 @@ namespace DevMonitor
 
         public static void Write(string source, Exception error, bool terminating)
         {
-            Append("CRASH (" + source + (terminating ? ", terminating" : "") + ", " + AppIdentity.Version + "): " + (error == null ? "unknown error" : error.ToString()));
+            string text = error == null ? "unknown error" : error.ToString();
+            Append("CRASH (" + source + (terminating ? ", terminating" : "") + ", " + AppIdentity.Version + "): " + text);
             if (Interlocked.Exchange(ref shown, 1) != 0) return;
+            if (CrashReportConsent.IsGiven)
+            {
+                string problem = CrashUploader.Send(source, text, FilePath);
+                Append(problem == null ? "отчёт о сбое отправлен" : "отчёт о сбое не отправлен: " + problem);
+            }
             try
             {
                 MessageBox.Show(
