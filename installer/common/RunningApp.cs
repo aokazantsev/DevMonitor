@@ -64,6 +64,10 @@ namespace DevMonitor
             {
                 return null;
             }
+            catch (NullReferenceException)
+            {
+                return null;
+            }
         }
     }
 }
