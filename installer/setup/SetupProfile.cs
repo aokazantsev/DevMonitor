@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace DevMonitor
 {
@@ -10,6 +11,10 @@ namespace DevMonitor
         private const string ShortcutKey = "shortcut";
         private const string DriverKey = "driver";
         private const string ResetSettingsKey = "resetSettings";
+        private const int DeleteAttempts = 5;
+        private const int DeleteRetryMs = 300;
+        private static readonly string[] StaleSensorMarkers = { "sensor-gpu.pending", "sensor-gpu-limits.pending" };
+        private const string StoppedHint = "DevMonitor, если был запущен, остановлен: повтори установку, когда исправишь причину.";
 
         public const string Intro =
             "Оверлей поверх всех окон: загрузка и температура CPU и GPU, ОЗУ, видеопамять, память Android Studio, "
@@ -28,6 +33,8 @@ namespace DevMonitor
         public static List<SetupOption> Options()
         {
             bool hasDriver = PawnIoDriver.IsInstalled();
+            string installed = UninstallRegistration.InstalledLocation();
+            bool isUpdate = installed != null && Directory.Exists(installed) && InstallFolder.IsOurs(installed);
             return new List<SetupOption>
             {
                 new SetupOption
@@ -35,14 +42,14 @@ namespace DevMonitor
                     Key = ShortcutKey,
                     Text = "Ярлык на рабочем столе",
                     Hint = "Ярлык запускает DevMonitor от администратора — иначе нет температуры CPU.",
-                    Checked = true
+                    Checked = !isUpdate || File.Exists(DesktopShortcut.ShortcutPath())
                 },
                 new SetupOption
                 {
                     Key = DriverKey,
                     Text = hasDriver ? "Драйвер PawnIO уже установлен" : "Установить драйвер PawnIO",
                     Hint = "Драйвер читает температуру процессора. Откроется его собственный установщик.",
-                    Checked = !hasDriver,
+                    Checked = !hasDriver && !isUpdate,
                     Enabled = !hasDriver
                 },
                 new SetupOption
@@ -57,16 +64,18 @@ namespace DevMonitor
                 {
                     Key = CrashReportConsent.OptionKey,
                     Text = "Отправлять автору отчёты о сбоях",
-                    Hint = "В отчёт попадает журнал программы, а в нём — имя пользователя и компьютера Windows и путь к программе. "
+                    Hint = "В отчёт попадает журнал программы, а в нём — имя пользователя и домена (или компьютера) Windows и пути к программе, её данным и скачанному обновлению. "
                         + "Не включай, если это запрещают правила твоей компании.",
                     DetailsTitle = "Что уходит в отчёте",
                     Details = "Отчёт уходит один раз — при падении программы — на aokazantsev.ru (сервер в России), "
                         + "без повторных попыток:\n"
                         + "• версия программы, Windows и .NET;\n"
-                        + "• текст ошибки со стеком вызовов и последние 100 КБ журнала %LOCALAPPDATA%\\DevMonitor\\log.txt: "
-                        + "имя пользователя и компьютера Windows, путь к программе, выбранные процессор и видеокарта, состояние датчиков;\n"
+                        + "• время и текст ошибки со стеком вызовов;\n"
+                        + "• последние 100 КБ журнала %LOCALAPPDATA%\\DevMonitor\\log.txt: "
+                        + "имя пользователя и домена (или компьютера) Windows, пути к программе и её данным, выбранные процессор и видеокарта, "
+                        + "состояние датчиков, проверки, загрузки и запуск обновлений с путём к скачанному файлу;\n"
                         + "• IP-адрес, с которого пришёл отчёт.\n"
-                        + "История показателей и настройки не отправляются. Отчёты видит только автор, хранятся последние 50 МБ. "
+                        + "История показателей и файл настроек не отправляются. Отчёты видит только автор, хранятся последние 50 МБ. "
                         + "Изменить выбор — переустановить программу.",
                     Checked = CrashReportConsent.IsGiven
                 }
@@ -75,39 +84,101 @@ namespace DevMonitor
 
         public static void BeforeExtract(InstallRequest request, Action<int, string> report, List<string> notes)
         {
-            if (request.Has(ResetSettingsKey))
+            try
             {
-                DeleteSetting("settings.txt");
-                DeleteSetting("position.txt");
-                SetupLog.Append("settings reset");
+                CrashReportConsent.Set(request.Has(CrashReportConsent.OptionKey));
             }
-            CrashReportConsent.Set(request.Has(CrashReportConsent.OptionKey));
+            catch (IOException error)
+            {
+                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+            }
             SetupLog.Append("crash reports: " + request.Has(CrashReportConsent.OptionKey));
-        }
-
-        private static void DeleteSetting(string name)
-        {
-            string path = Path.Combine(AppIdentity.DataDirectory, name);
-            if (File.Exists(path)) File.Delete(path);
         }
 
         public static void AfterExtract(InstallRequest request, Action<int, string> report, List<string> notes)
         {
             string target = request.TargetDirectory;
-            if (request.Has(ShortcutKey) || File.Exists(DesktopShortcut.ShortcutPath()))
+            foreach (string marker in StaleSensorMarkers)
+            {
+                string markerProblem = DeleteSetting(Path.Combine(AppIdentity.DataDirectory, marker));
+                if (markerProblem != null) SetupLog.Append(marker + " not removed: " + markerProblem);
+            }
+            SetupLog.Append("reset settings: " + request.Has(ResetSettingsKey));
+            if (request.Has(ResetSettingsKey))
+            {
+                report(78, "Сброс настроек…");
+                string settingsPath = Path.Combine(AppIdentity.DataDirectory, "settings.txt");
+                string settingsProblem = DeleteSetting(settingsPath);
+                SetupLog.Append("settings.txt reset: " + (settingsProblem ?? "done"));
+                if (settingsProblem != null) throw new InvalidOperationException("Не удалось сбросить настройки — файл " + settingsPath + " не удалился (" + settingsProblem + "). " + StoppedHint);
+                string positionPath = Path.Combine(AppIdentity.DataDirectory, "position.txt");
+                string positionProblem = DeleteSetting(positionPath);
+                SetupLog.Append("position.txt reset: " + (positionProblem ?? "done"));
+                if (positionProblem != null) notes.Add("Положение окна не сброшено — файл " + positionPath + " не удалился (" + positionProblem + ").");
+            }
+            if (request.Has(ShortcutKey))
             {
                 report(80, "Ярлык на рабочем столе…");
-                DesktopShortcut.Create(target);
+                string problem = DesktopShortcut.Create(target);
+                SetupLog.Append("desktop shortcut: " + (problem ?? "created"));
+                if (problem != null) notes.Add("Ярлык на рабочем столе не создан (" + problem + "). Без него DevMonitor запускается без прав — не будет температуры CPU.");
+            }
+            else if (File.Exists(DesktopShortcut.ShortcutPath()))
+            {
+                string problem = DesktopShortcut.Delete();
+                SetupLog.Append("desktop shortcut unchecked: " + (problem ?? "removed"));
+                if (problem != null) notes.Add("Ярлык на рабочем столе не удалён (" + problem + ") — удали его вручную: он может вести в прежнюю папку программы.");
             }
             if (request.Has(DriverKey) && !PawnIoDriver.IsInstalled())
             {
                 report(84, "Установка драйвера PawnIO — пройди его установщик…");
                 string setupPath = Path.Combine(target, AppIdentity.PawnIoSetupRelativePath);
                 string problem = PawnIoDriver.RunSetup(setupPath);
+                SetupLog.Append("pawnio driver: " + (problem ?? "installed"));
                 if (problem != null)
                 {
                     notes.Add("Драйвер PawnIO: " + problem + ". Без него не будет температуры CPU. Поставить позже: " + setupPath);
                 }
+            }
+        }
+
+        public static void AfterLaunch(InstallRequest request, Action<int, string> report, List<string> notes)
+        {
+        }
+
+        private static string DeleteSetting(string path)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    if (!File.Exists(path)) return null;
+                    FileAttributes attributes = File.GetAttributes(path);
+                    if ((attributes & FileAttributes.ReadOnly) != 0) File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
+                    File.Delete(path);
+                    return null;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return null;
+                }
+                catch (FileNotFoundException)
+                {
+                    return null;
+                }
+                catch (IOException error)
+                {
+                    if (attempt >= DeleteAttempts) return "файл занят другой программой: " + error.Message.TrimEnd('.');
+                }
+                catch (UnauthorizedAccessException error)
+                {
+                    return "нет доступа: " + error.Message.TrimEnd('.');
+                }
+                Thread.Sleep(DeleteRetryMs);
             }
         }
 

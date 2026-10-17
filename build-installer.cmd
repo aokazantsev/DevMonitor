@@ -4,7 +4,7 @@ cd /d "%~dp0"
 set APP=DevMonitor
 set CSC="%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 set REFS=/r:System.Windows.Forms.dll /r:System.Drawing.dll
-set SHARED=src\AppIdentity.cs src\Autostart.cs
+set SHARED=src\AppIdentity.cs src\Autostart.cs src\SystemTools.cs
 set UNINSTALL_EXTRA=
 set SETUP_EXTRA=src\CrashReportConsent.cs
 set PREBUILD=installer\fetch-pawnio.ps1

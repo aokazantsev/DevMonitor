@@ -1,4 +1,7 @@
+import os
 from PIL import Image, ImageDraw
+
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 SIZE = 1024
 TILE = (15, 23, 42, 255)
@@ -38,5 +41,5 @@ for index, y in enumerate(range(230, 620, 78)):
     draw.rounded_rectangle((tick_left, y - 18, tick_left + length, y + 18), radius=18, fill=TICK)
 
 sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)]
-image.resize((256, 256), Image.LANCZOS).save("D:/DevMonitor/src/app.ico", sizes=sizes)
-image.resize((256, 256), Image.LANCZOS).save("D:/DevMonitor/src/app_preview.png")
+image.resize((256, 256), Image.LANCZOS).save(os.path.join(HERE, "app.ico"), sizes=sizes)
+image.resize((256, 256), Image.LANCZOS).save(os.path.join(HERE, "app_preview.png"))

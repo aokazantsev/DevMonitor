@@ -346,6 +346,7 @@ namespace DevMonitor
         private void RetrySensors()
         {
             collector.RetrySensors();
+            ActiveHardware.RefreshGpuZones();
             lastSignature = null;
             OnRefreshTick(this, EventArgs.Empty);
         }
@@ -353,7 +354,15 @@ namespace DevMonitor
         private static void OpenLog()
         {
             if (!File.Exists(AppLog.FilePath)) AppLog.Append("log opened");
-            Process.Start(new ProcessStartInfo("notepad.exe", "\"" + AppLog.FilePath + "\"") { UseShellExecute = false });
+            try
+            {
+                Process.Start(new ProcessStartInfo(SystemTools.Notepad, "\"" + AppLog.FilePath + "\"") { UseShellExecute = false });
+            }
+            catch (System.ComponentModel.Win32Exception error)
+            {
+                AppLog.Append("notepad failed: " + error.Message);
+                MessageBox.Show("Не удалось открыть " + AppLog.FilePath + ": " + error.Message, AppIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void OnTrayIconClick(object sender, MouseEventArgs e)
@@ -440,14 +449,15 @@ namespace DevMonitor
             statisticsForm.Activate();
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            AppLog.Append("exit: " + e.CloseReason);
             recorder.Flush();
             trayIcon.Visible = false;
             trayIcon.Dispose();
             if (statisticsForm != null && !statisticsForm.IsDisposed) statisticsForm.Close();
             if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Close();
-            base.OnFormClosing(e);
+            base.OnFormClosed(e);
         }
 
         private float ReadDpiScale()

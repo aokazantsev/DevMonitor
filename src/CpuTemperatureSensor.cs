@@ -44,7 +44,7 @@ namespace DevMonitor
             string libraryPath = Path.Combine(LibraryDirectory(), LibraryFile);
             if (!File.Exists(libraryPath))
             {
-                Problem = "нет библиотеки " + libraryPath;
+                Problem = "недоступна: нет библиотеки " + libraryPath + " — переустанови DevMonitor";
                 AppLog.Append("cpu temperature: " + Problem);
                 return;
             }
@@ -76,6 +76,7 @@ namespace DevMonitor
                 Problem = null;
                 firstReadPending = true;
                 AppLog.Append("cpu temperature: LibreHardwareMonitor opened");
+                SensorGuard.Leave(GuardName);
             }
             catch (Exception error)
             {

@@ -6,7 +6,9 @@ namespace DevMonitor
     internal static class AppIdentity
     {
         public const string Name = "DevMonitor";
-        public const string Version = "1.11";
+        public const string Version = "1.12";
+        public const string UpdateSetupArguments = "";
+        public const string UpdateKeeps = "настройки и история сохранятся";
         public const string ExecutableName = "DevMonitor.exe";
         public const string ProcessName = "DevMonitor";
         public const string UninstallerName = "Uninstall.exe";
@@ -16,6 +18,7 @@ namespace DevMonitor
         public const string AutostartDelay = "PT20S";
         public const string ShortcutName = "DevMonitor.lnk";
         public const string PawnIoSetupRelativePath = @"installer\redist\PawnIO_setup.exe";
+        public static readonly string[] PayloadFiles = { ExecutableName, ExecutableName + ".config", UninstallerName, "README.md", "LICENSE", "CHANGELOG.md", "THIRD_PARTY_NOTICES.md", "hardware.csv", "lib", "installer" };
 
         public static string DefaultInstallDirectory
         {

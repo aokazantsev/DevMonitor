@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace DevMonitor
 {
@@ -9,50 +10,100 @@ namespace DevMonitor
         private const string CpuKey = "cpu";
         private const string GpuKey = "gpu";
         private const char KeyValueSeparator = '=';
+        private const int ReadAttempts = 5;
+        private const int ReadRetryMs = 300;
+        private const int PatientReadRetries = 10;
+        private const int PatientReadRetryMs = 1500;
 
-        private static readonly string FilePath = UserDataPaths.Settings;
+        public static readonly string FilePath = UserDataPaths.Settings;
 
         public string CpuProfileName;
         public string GpuProfileName;
+        public string ReadError;
+        public bool ReadDenied;
 
         public static AppSettings Load()
         {
             var settings = new AppSettings();
             if (!File.Exists(FilePath)) return settings;
-            try
+            string[] lines = null;
+            for (int attempt = 1; lines == null; attempt++)
             {
-                foreach (string line in File.ReadAllLines(FilePath, Encoding.UTF8))
+                try
                 {
-                    int separator = line.IndexOf(KeyValueSeparator);
-                    if (separator <= 0) continue;
-                    string key = line.Substring(0, separator).Trim();
-                    string value = line.Substring(separator + 1).Trim();
-                    if (string.Equals(key, CpuKey, StringComparison.OrdinalIgnoreCase)) settings.CpuProfileName = value;
-                    else if (string.Equals(key, GpuKey, StringComparison.OrdinalIgnoreCase)) settings.GpuProfileName = value;
+                    lines = File.ReadAllLines(FilePath, Encoding.UTF8);
                 }
+                catch (FileNotFoundException)
+                {
+                    return settings;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return settings;
+                }
+                catch (IOException error)
+                {
+                    if (attempt >= ReadAttempts) settings.ReadError = error.Message;
+                }
+                catch (UnauthorizedAccessException error)
+                {
+                    settings.ReadError = error.Message;
+                    settings.ReadDenied = true;
+                }
+                if (settings.ReadError != null) return settings;
+                if (lines == null) Thread.Sleep(ReadRetryMs);
             }
-            catch (IOException)
+            foreach (string line in lines)
             {
+                int separator = line.IndexOf(KeyValueSeparator);
+                if (separator <= 0) continue;
+                string key = line.Substring(0, separator).Trim();
+                string value = line.Substring(separator + 1).Trim();
+                if (string.Equals(key, CpuKey, StringComparison.OrdinalIgnoreCase)) settings.CpuProfileName = value;
+                else if (string.Equals(key, GpuKey, StringComparison.OrdinalIgnoreCase)) settings.GpuProfileName = value;
             }
             return settings;
         }
 
-        public bool TrySave()
+        public static AppSettings LoadPatiently(Action<string> log)
         {
+            AppSettings settings = Load();
+            for (int attempt = 1; settings.ReadError != null && !settings.ReadDenied && attempt <= PatientReadRetries; attempt++)
+            {
+                log("settings not read: " + settings.ReadError + ", retry " + attempt);
+                Thread.Sleep(PatientReadRetryMs);
+                settings = Load();
+            }
+            return settings;
+        }
+
+        public string ReadAdvice
+        {
+            get { return ReadDenied ? "Нет доступа к файлу: верни права на него или удали его." : "Файл занят другой программой: подожди, пока он освободится."; }
+        }
+
+        public string Save()
+        {
+            string content = CpuKey + KeyValueSeparator + CpuProfileName + Environment.NewLine
+                + GpuKey + KeyValueSeparator + GpuProfileName + Environment.NewLine;
             try
             {
-                string content = CpuKey + KeyValueSeparator + CpuProfileName + Environment.NewLine
-                    + GpuKey + KeyValueSeparator + GpuProfileName + Environment.NewLine;
+                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
+                if (File.Exists(FilePath))
+                {
+                    FileAttributes attributes = File.GetAttributes(FilePath);
+                    if ((attributes & FileAttributes.ReadOnly) != 0) File.SetAttributes(FilePath, attributes & ~FileAttributes.ReadOnly);
+                }
                 File.WriteAllText(FilePath, content, new UTF8Encoding(false));
-                return true;
+                return null;
             }
-            catch (IOException)
+            catch (IOException error)
             {
-                return false;
+                return error.Message;
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException error)
             {
-                return false;
+                return error.Message;
             }
         }
     }

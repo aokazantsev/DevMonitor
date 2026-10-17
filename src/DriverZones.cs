@@ -14,7 +14,7 @@ namespace DevMonitor
             float? target;
             if (!NvidiaTemperatureLimits.TryRead(out maximum, out target))
             {
-                description = "драйвер NVIDIA не отдал пределы — пороги по умолчанию";
+                description = "пределы из драйвера NVIDIA не прочитаны — пороги по умолчанию";
                 return ActiveHardware.DefaultGpuZones;
             }
             float critical = maximum - CriticalMargin;

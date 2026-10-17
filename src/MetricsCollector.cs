@@ -36,7 +36,6 @@ namespace DevMonitor
             gpu.Dispose();
             SensorGuard.Leave(CpuTemperatureSensor.GuardName);
             SensorGuard.Leave(NvidiaGpuSensor.GuardName);
-            SensorGuard.Leave(NvidiaTemperatureLimits.GuardName);
             cpuTemperature = new CpuTemperatureSensor();
             gpu = new NvidiaGpuSensor();
             cpuTemperature.Open();

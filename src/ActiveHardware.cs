@@ -12,17 +12,26 @@ namespace DevMonitor
         private static readonly HardwareProfile FallbackGpu =
             new HardwareProfile(HardwareKind.Gpu, "не выбрана", DefaultGpuZones, "пороги по умолчанию");
 
-        public static readonly HardwareProfile Cpu;
-        public static readonly HardwareProfile Gpu;
+        public static HardwareProfile Cpu { get; private set; }
+        public static HardwareProfile Gpu { get; private set; }
 
-        static ActiveHardware()
+        private static HardwareProfile selectedGpu;
+
+        public static void Select(AppSettings settings)
         {
             List<HardwareProfile> catalog = HardwareCatalog.Load();
-            AppSettings settings = AppSettings.Load();
             Cpu = Choose(catalog, HardwareKind.Cpu, settings.CpuProfileName, new[] { InstalledHardware.ProcessorName() }) ?? FallbackCpu;
-            Gpu = WithResolvedZones(Choose(catalog, HardwareKind.Gpu, settings.GpuProfileName, InstalledHardware.DisplayAdapterNames()) ?? FallbackGpu);
+            selectedGpu = Choose(catalog, HardwareKind.Gpu, settings.GpuProfileName, InstalledHardware.DisplayAdapterNames()) ?? FallbackGpu;
+            Gpu = WithResolvedZones(selectedGpu);
             AppLog.Append("hardware: cpu=" + Cpu.Name + " (" + (settings.CpuProfileName == null ? "detected" : "from settings") + ")"
                 + ", gpu=" + Gpu.Name + " (" + (settings.GpuProfileName == null ? "detected" : "from settings") + ")");
+        }
+
+        public static void RefreshGpuZones()
+        {
+            if (!selectedGpu.UsesDriverLimits) return;
+            Gpu = WithResolvedZones(selectedGpu);
+            AppLog.Append("gpu zones refreshed: " + Gpu.Note);
         }
 
         private static HardwareProfile Choose(List<HardwareProfile> catalog, HardwareKind kind, string configuredName, IEnumerable<string> installedNames)

@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Security.Principal;
@@ -17,20 +16,44 @@ namespace DevMonitor
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += OnThreadException;
             bool isFirstInstance;
-            using (new Mutex(true, AppIdentity.SingleInstanceMutex, out isFirstInstance))
+            AppSettings settings;
+            Mutex singleInstance;
+            try
             {
-                if (!isFirstInstance) return;
+                singleInstance = new Mutex(true, AppIdentity.SingleInstanceMutex, out isFirstInstance);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                AppLog.Append("already running with administrator rights, second copy without rights exits");
+                return;
+            }
+            using (singleInstance)
+            {
+                if (!isFirstInstance)
+                {
+                    AppLog.Append("already running, second copy exits, elevated=" + IsElevated());
+                    return;
+                }
                 AppLog.Append("start " + AppIdentity.Version + ", user=" + Environment.UserDomainName + "\\" + Environment.UserName
                     + ", elevated=" + IsElevated() + ", os=" + Environment.OSVersion.VersionString
                     + ", 64bit=" + Environment.Is64BitProcess + ", exe=" + Application.ExecutablePath);
-                using (Process current = Process.GetCurrentProcess())
-                {
-                    current.PriorityClass = ProcessPriorityClass.BelowNormal;
-                }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new OverlayForm());
+                settings = AppSettings.LoadPatiently(AppLog.Append);
+                if (settings.ReadError == null)
+                {
+                    ActiveHardware.Select(settings);
+                    Application.Run(new OverlayForm());
+                }
+                else
+                {
+                    AppLog.Append("settings not read, exit: " + settings.ReadError);
+                }
             }
+            if (settings.ReadError == null) return;
+            MessageBox.Show("Не удалось прочитать настройки " + AppSettings.FilePath + ": " + settings.ReadError + Environment.NewLine + Environment.NewLine
+                + settings.ReadAdvice + " Программа закрыта, после этого запусти " + AppIdentity.Name + " снова.",
+                AppIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private static bool IsElevated()

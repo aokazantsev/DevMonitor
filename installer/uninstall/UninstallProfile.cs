@@ -9,7 +9,8 @@ namespace DevMonitor
 
         public static void Remove(List<string> problems)
         {
-            DesktopShortcut.Delete();
+            string problem = DesktopShortcut.Delete();
+            if (problem != null) problems.Add("ярлык на рабочем столе не удалён: " + problem);
         }
     }
 }

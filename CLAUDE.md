@@ -25,7 +25,8 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
 ## Проверка изменений
 
 - История и настройки живут в `%LOCALAPPDATA%\DevMonitor`, а не рядом с exe. Обвязка для снимков
-  не должна создавать `HistoryRecorder` и `OverlayForm`: они пишут в настоящую историю пользователя.
+  не должна создавать `HistoryRecorder` и `OverlayForm`: они пишут в настоящую историю пользователя. Окну настроек,
+  статистике и форматтеру строк нужны пороги железа — обвязка сначала вызывает `ActiveHardware.Select(new AppSettings())`.
 - Интерфейс проверять снимками: отдельная обвязка (свой `Main`), окно → `DrawToBitmap` или
   `CopyFromScreen` → PNG → посмотреть. Скриншоты README — `docs\*.png`, поменял интерфейс — переснять.
 - Нагрузку мерить: CPU-время процесса за 60 с (цель — доли процента), private-память.
@@ -41,6 +42,20 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
 - В справочник `hardware.csv` — только железо, которое реально читается (CPU — семейства
   LibreHardwareMonitor из `lib\`, GPU — только NVIDIA через NVML). Пороги — по правилам из шапки файла,
   значения — со страниц производителей.
+- Системные программы (`schtasks`, `notepad`, `explorer`, `cmd`, `ping`) — по полному пути из `SystemTools`: установщик
+  запускается из «Загрузок», и программа с тем же именем рядом с ним выполнилась бы с правами администратора.
+- Безопасность — соразмерно утилите (модель угроз — в скилле `selfcheck`, режим pet-проекта): защищаемся от того, до
+  чего программа дотягивается сама (файлы рядом с установщиком в «Загрузках», канал обновления) и от вреда от самой
+  программы (стёртое чужое, испорченные `settings.txt` и история). Локальный процесс того же пользователя — вне модели.
+- Из папки установки и прежних папок программа удаляет только свои файлы — имена верхнего уровня из
+  `AppIdentity.PayloadFiles` (= `installer\payload.txt`, папки `lib` и `installer` целиком), метку `DevMonitor.install` и
+  `.old.exe`, — а саму папку только если она опустела (`InstallFolder.RemoveProgramFiles`): чужое в ней пропасть не
+  должно. Установщик принимает папку, если она пустая, с меткой (`InstallFolder.IsMarked`), с одними файлами программы
+  (`HoldsOnlyProgramFiles`) или это зарегистрированная папка с exe (`IsOurs`). Прежняя зарегистрированная папка
+  чистится при `IsOurs`; деинсталлятор чистит папку только с меткой.
+- Существующий, но нечитаемый `settings.txt` не подменяется стандартными настройками: программа после повторов
+  закрывается с сообщением. Установщик настройки не читает; «Сбросить настройки» удаляет `settings.txt` и
+  `position.txt` после распаковки; не удалился `settings.txt` — отказывает, `position.txt` — заметка.
 
 ## Грабли
 
@@ -58,15 +73,20 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
 Проект — один из четырёх pet-проектов (AgentVpnGuard, DevMonitor, AgentGlow, AgentProxy), они устроены одинаково:
 похожий интерфейс, одинаковые установщик, деинсталлятор, порядок меню и код общих частей.
 
-- **Общие файлы** — одинаковые во всех трёх, отличается только `namespace`:
+- **Общие файлы** — одинаковые в AgentVpnGuard, AgentGlow и DevMonitor, отличается только `namespace`:
   `installer\setup\{SetupForm, Installation, InstallTarget, Payload, SetupOption, SetupField,
-  InstallRequest, SetupProgram, SetupLog}.cs`, `installer\common\{UninstallRegistration, RunningApp}.cs`,
-  `installer\uninstall\UninstallProgram.cs`, `src\{AboutForm, CrashReportConsent, CrashUploader}.cs`.
-  `installer\make-payload.ps1` отличается только переменными в начале; `build.cmd` и `build-installer.cmd` — тоже,
-  кроме AgentGlow, у которого они свои (рекурсивная сборка `src`, общий список исходников для установщика). Поменял
-  общий файл — та же правка в двух других проектах.
-- **Своё у проекта:** `src\AppIdentity.cs` (имя, версия, ссылки, пути), `src\Autostart.cs` (задача
-  Планировщика или ключ Run), `installer\setup\SetupProfile.cs` (тексты, поля, галочки, свои шаги),
+  InstallRequest, SetupProgram, SetupLog}.cs`, `installer\common\{UninstallRegistration, RunningApp, InstallFolder}.cs`,
+  `installer\uninstall\UninstallProgram.cs`, `src\{AboutForm, CrashReportConsent, CrashUploader, UpdateChecker,
+  UpdateForm, UpdateRelease, SystemTools}.cs`. `installer\make-payload.ps1` отличается только переменными в начале;
+  `build.cmd` и `build-installer.cmd` — тоже, кроме AgentGlow, у которого они свои (рекурсивная сборка `src`, общий
+  список исходников для установщика). Поменял общий файл — та же правка в остальных проектах. У AgentProxy часть
+  общих файлов расходится осознанно (установка без прав, HKCU, тихий режим) — список в его `CLAUDE.md`;
+  `Update{Checker,Form,Release}.cs` одинаковые у всех четырёх (сверка sha256 по `digest` релиза, «Установить сейчас»
+  через ShellExecute — окно UAC у программ без прав), своё — `AppIdentity.UpdateSetupArguments` и `UpdateKeeps`.
+  Тесты общего кода обновления — в AgentProxy (`tests\csharp\run.cmd`).
+- **Своё у проекта:** `src\AppIdentity.cs` (имя, версия, ссылки, пути, `PayloadFiles`, параметры обновления),
+  `src\Autostart.cs` (задача Планировщика или ключ Run), `installer\setup\SetupProfile.cs` (тексты, поля, галочки,
+  свои шаги, `AfterLaunch`),
   `installer\uninstall\UninstallProfile.cs`, `installer\payload.txt` (что ставится), `src\CrashReport.cs`
   (перехват падений: куда пишет текст ошибки — у каждого свой журнал).
 - **Надёжность:**
@@ -82,7 +102,7 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
     (метки ошибки и починки), в подсказке, меню и журнале. Свои проблемы — только в трее и
     уведомлениях, не в основном результате программы.
 - **Меню трея:** блок состояния; действия приложения; «Настройки…», «Журнал» (если есть),
-  «Запускать при входе в Windows», «О приложении…»; «Выход».
+  «Запускать при входе в Windows», «Проверить обновление…», «О приложении…»; «Выход».
 - **Установщик:** права администратора, выбор папки (по умолчанию `C:\Program Files\<Имя>`), галочка
   автозапуска, сам останавливает запущенную копию, после установки запускает программу. Регистрация
   в «Приложениях» — в HKLM. Деинсталлятор сам закрывает программу и удаляет её данные.

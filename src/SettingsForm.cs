@@ -14,6 +14,7 @@ namespace DevMonitor
         private readonly Label gpuZones = new Label();
         private readonly Label status = new Label();
         private readonly Button saveButton = new Button();
+        private string readProblem;
 
         public SettingsForm()
         {
@@ -37,6 +38,7 @@ namespace DevMonitor
 
             Controls.Add(BuildLayout());
             AppSettings saved = AppSettings.Load();
+            if (saved.ReadError != null) readProblem = "Не удалось прочитать " + AppSettings.FilePath + ": " + saved.ReadError + " В списках — то, что действует сейчас.";
             FillBox(cpuBox, HardwareKind.Cpu, saved.CpuProfileName ?? ActiveHardware.Cpu.Name);
             FillBox(gpuBox, HardwareKind.Gpu, saved.GpuProfileName ?? ActiveHardware.Gpu.Name);
             cpuBox.SelectedIndexChanged += delegate { OnSelectionChanged(); };
@@ -150,6 +152,7 @@ namespace DevMonitor
                 ? "Справочник hardware.csv не найден рядом с DevMonitor.exe — выбирать не из чего."
                 : "Сейчас действует: " + ActiveHardware.Cpu.Name + ", " + ActiveHardware.Gpu.Name
                   + ". Новый выбор применится после перезапуска DevMonitor.";
+            if (readProblem != null) status.Text += Environment.NewLine + readProblem;
         }
 
         private static string ZonesText(HardwareProfile profile)
@@ -171,11 +174,14 @@ namespace DevMonitor
             var cpu = (HardwareProfile)cpuBox.SelectedItem;
             var gpu = (HardwareProfile)gpuBox.SelectedItem;
             var settings = new AppSettings { CpuProfileName = cpu.Name, GpuProfileName = gpu.Name };
-            if (!settings.TrySave())
+            string saveProblem = settings.Save();
+            if (saveProblem != null)
             {
-                status.Text = "Не удалось записать settings.txt рядом с DevMonitor.exe.";
+                AppLog.Append("settings not saved: " + saveProblem);
+                status.Text = "Не удалось записать " + AppSettings.FilePath + ": " + saveProblem;
                 return;
             }
+            readProblem = null;
             bool isAlreadyActive = cpu.Name == ActiveHardware.Cpu.Name && gpu.Name == ActiveHardware.Gpu.Name;
             status.Text = isAlreadyActive
                 ? "Сохранено. Этот выбор уже действует."

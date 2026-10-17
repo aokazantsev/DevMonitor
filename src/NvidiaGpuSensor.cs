@@ -70,7 +70,7 @@ namespace DevMonitor
                 isAvailable = init == NvmlSuccess && handle == NvmlSuccess;
                 firstReadPending = isAvailable;
                 AppLog.Append("nvidia gpu: nvmlInit " + init + ", device " + handle + (isAvailable ? ", available" : ", not available"));
-                if (!isAvailable) SensorGuard.Leave(GuardName);
+                SensorGuard.Leave(GuardName);
             }
             catch (DllNotFoundException)
             {
