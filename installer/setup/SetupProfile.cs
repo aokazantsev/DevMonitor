@@ -78,6 +78,24 @@ namespace DevMonitor
                         + "История показателей и файл настроек не отправляются. Отчёты видит только автор, хранятся последние 50 МБ. "
                         + "Изменить выбор — переустановить программу.",
                     Checked = CrashReportConsent.IsGiven
+                },
+                new SetupOption
+                {
+                    Key = UsageConsent.OptionKey,
+                    Text = "Отправлять автору анонимную статистику использования",
+                    Hint = "Помогает понять, сколько людей пользуется программой и какие функции нужны. Без имён, путей и адресов. "
+                        + "Выключить можно и потом — в настройках программы.",
+                    DetailsTitle = "Что уходит в статистике",
+                    Details = "Раз в час, пока программа запущена, на aokazantsev.ru (сервер в России) уходят счётчики за текущие и неотправленные прошлые сутки (до недели):\n"
+                        + "• случайный номер установки — он не связан с тобой и компьютером;\n"
+                        + "• версия программы и Windows;\n"
+                        + "• сколько раз за сутки программа запускалась и сама находила новую версию, сколько раз ты пользовался пунктами меню, оверлеем, статистикой, настройками и обновлением;\n"
+                        + "• текущее состояние: включены ли автозапуск, проверка обновлений и отчёты о сбоях, запущена ли программа "
+                        + "с правами администратора, показан ли оверлей, выбрано ли железо вручную, есть ли процессор и видеокарта "
+                        + "в справочнике, читаются ли температура процессора и видеокарта.\n"
+                        + "Имена пользователя и компьютера, пути, модели железа, показатели и история в статистику не попадают, IP-адрес сервер не хранит. "
+                        + "Статистика хранится 400 суток, дальше — только итоги по дням.",
+                    Checked = UsageConsent.InstallerDefault
                 }
             };
         }
@@ -97,6 +115,19 @@ namespace DevMonitor
                 throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
             }
             SetupLog.Append("crash reports: " + request.Has(CrashReportConsent.OptionKey));
+            try
+            {
+                UsageConsent.Set(request.Has(UsageConsent.OptionKey));
+            }
+            catch (IOException error)
+            {
+                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+            }
+            SetupLog.Append("usage statistics: " + request.Has(UsageConsent.OptionKey));
         }
 
         public static void AfterExtract(InstallRequest request, Action<int, string> report, List<string> notes)

@@ -44,7 +44,11 @@ namespace DevMonitor
             tabs.Padding = new Point(Font.Height, Font.Height / 4);
             tabs.TabPages.Add(todayPage);
             tabs.TabPages.Add(weekPage);
-            tabs.SelectedIndexChanged += delegate { RefreshSelected(true); };
+            tabs.SelectedIndexChanged += delegate
+            {
+                if (tabs.SelectedTab == weekPage) Usage.Hit("stats.tab_week");
+                RefreshSelected(true);
+            };
             Controls.Add(tabs);
 
             refreshTimer.Interval = LiveRefreshMs;

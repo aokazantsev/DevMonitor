@@ -17,6 +17,7 @@ namespace DevMonitor
         private const int WsExLayered = 0x80000;
         private const int WsExToolWindow = 0x80;
         private const int WmNcLButtonDown = 0xA1;
+        private const int WmEnterSizeMove = 0x231;
         private const int WmExitSizeMove = 0x232;
         private const int HtCaption = 0x2;
         private const int RefreshIntervalMs = 1000;
@@ -76,6 +77,10 @@ namespace DevMonitor
         private bool? isStartupEnabled;
         private const int TrayTextLimit = 63;
         private const string TrayIconResource = "DevMonitor.app.ico";
+        private const int BalloonMs = 4000;
+        private bool updateBalloonShown;
+        private bool usageStarted;
+        private Point moveStartLocation;
 
         public OverlayForm()
         {
@@ -119,12 +124,76 @@ namespace DevMonitor
             base.OnShown(e);
             OnRefreshTick(this, EventArgs.Empty);
             refreshTimer.Start();
+            StartUsage();
+        }
+
+        private void StartUsage()
+        {
+            if (usageStarted) return;
+            usageStarted = true;
+            UpdateUsageState();
+            Usage.Start();
+            UpdateWatcher.Start(OnNewVersion);
+        }
+
+        private void OnNewVersion(string version)
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                BeginInvoke((MethodInvoker)delegate { ShowUpdateBalloon(version); });
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        private void ShowBalloon(string text, ToolTipIcon icon)
+        {
+            updateBalloonShown = false;
+            trayIcon.ShowBalloonTip(BalloonMs, Text, text, icon);
+        }
+
+        private void ShowUpdateBalloon(string version)
+        {
+            trayIcon.ShowBalloonTip(BalloonMs, Text, "Вышла версия " + version + ". Нажми, чтобы скачать и установить.", ToolTipIcon.Info);
+            updateBalloonShown = true;
+        }
+
+        private void OnBalloonClicked(object sender, EventArgs e)
+        {
+            if (!updateBalloonShown) return;
+            updateBalloonShown = false;
+            Usage.Hit("update.notify_open");
+            UpdateForm.ShowSingle();
+        }
+
+        private void UpdateUsageState()
+        {
+            if (!isStartupEnabled.HasValue) isStartupEnabled = Autostart.IsEnabled();
+            Usage.SetState("autostart", isStartupEnabled.Value);
+            Usage.SetState("auto_update", AutoUpdateCheck.IsEnabled);
+            Usage.SetState("crash_reports", CrashReportConsent.IsGiven);
+            Usage.SetState("elevated", Program.IsElevated());
+            Usage.SetState("overlay_visible", Visible);
+            Usage.SetState("hardware_manual", ActiveHardware.IsManualChoice);
+            Usage.SetState("cpu_in_catalog", ActiveHardware.IsCpuInCatalog);
+            Usage.SetState("gpu_in_catalog", ActiveHardware.IsGpuInCatalog);
+            UpdateSensorState();
+        }
+
+        private void UpdateSensorState()
+        {
+            Usage.SetState("cpu_temperature", collector.CpuTemperatureProblem == null);
+            Usage.SetState("gpu_sensor", collector.GpuProblem == null);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
-            if (e.Button == MouseButtons.Right) trayIcon.ContextMenuStrip.Show(this, e.Location);
+            if (e.Button != MouseButtons.Right) return;
+            Usage.Hit("overlay.menu");
+            trayIcon.ContextMenuStrip.Show(this, e.Location);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -138,7 +207,14 @@ namespace DevMonitor
         protected override void WndProc(ref Message message)
         {
             base.WndProc(ref message);
-            if (message.Msg == WmExitSizeMove) positionStore.Save(Location);
+            if (message.Msg == WmEnterSizeMove)
+            {
+                moveStartLocation = Location;
+                return;
+            }
+            if (message.Msg != WmExitSizeMove) return;
+            if (Location != moveStartLocation) Usage.Hit("overlay.move");
+            positionStore.Save(Location);
         }
 
         protected override void Dispose(bool disposing)
@@ -174,6 +250,7 @@ namespace DevMonitor
                 AppLog.Append("slow sensor read: " + watch.ElapsedMilliseconds + " ms");
             }
             recorder.Record(snapshot, DateTime.Now);
+            UpdateSensorState();
             List<List<MetricRow>> groups = MetricRowsFormatter.Format(snapshot);
             UpdateTrayText(groups);
             if (!Visible) return;
@@ -290,6 +367,7 @@ namespace DevMonitor
             trayIcon.Text = Text;
             trayIcon.ContextMenuStrip = BuildMenu();
             trayIcon.MouseClick += OnTrayIconClick;
+            trayIcon.BalloonTipClicked += OnBalloonClicked;
             trayIcon.Visible = true;
         }
 
@@ -305,22 +383,58 @@ namespace DevMonitor
         private ContextMenuStrip BuildMenu()
         {
             var menu = new ContextMenuStrip();
-            retrySensorsItem.Click += delegate { RetrySensors(); };
+            retrySensorsItem.Click += delegate
+            {
+                Usage.Hit("menu.retry_sensors");
+                RetrySensors();
+            };
             menu.Items.Add(sensorProblemItem);
             menu.Items.Add(retrySensorsItem);
             menu.Items.Add(sensorSeparator);
-            toggleItem.Click += delegate { ToggleOverlay(); };
+            toggleItem.Click += delegate
+            {
+                Usage.Hit(Visible ? "menu.overlay_hide" : "menu.overlay_show");
+                ToggleOverlay();
+            };
             menu.Items.Add(toggleItem);
-            menu.Items.Add("Статистика…", null, delegate { ShowStatistics(); });
+            menu.Items.Add("Статистика…", null, delegate
+            {
+                Usage.Hit("menu.statistics");
+                ShowStatistics();
+            });
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Настройки…", null, delegate { ShowSettings(); });
-            menu.Items.Add("Журнал", null, delegate { OpenLog(); });
-            startupItem.Click += delegate { ToggleStartup(); };
+            menu.Items.Add("Настройки…", null, delegate
+            {
+                Usage.Hit("menu.settings");
+                ShowSettings();
+            });
+            menu.Items.Add("Журнал", null, delegate
+            {
+                Usage.Hit("menu.journal");
+                OpenLog();
+            });
+            startupItem.Click += delegate
+            {
+                Usage.Hit(startupItem.Checked ? "menu.autostart_off" : "menu.autostart_on");
+                ToggleStartup();
+            };
             menu.Items.Add(startupItem);
-            menu.Items.Add("Проверить обновление…", null, delegate { UpdateForm.ShowSingle(); });
-            menu.Items.Add("О приложении…", null, delegate { AboutForm.ShowSingle(); });
+            menu.Items.Add("Проверить обновление…", null, delegate
+            {
+                Usage.Hit("menu.update_check");
+                UpdateForm.ShowSingle();
+            });
+            menu.Items.Add("О приложении…", null, delegate
+            {
+                Usage.Hit("menu.about");
+                AboutForm.ShowSingle();
+            });
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Выход", null, delegate { Close(); });
+            menu.Items.Add("Выход", null, delegate
+            {
+                Usage.Hit("menu.exit");
+                Close();
+            });
             menu.Opening += delegate
             {
                 toggleItem.Text = Visible ? "Свернуть в трей" : "Развернуть";
@@ -367,7 +481,9 @@ namespace DevMonitor
 
         private void OnTrayIconClick(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left) ToggleOverlay();
+            if (e.Button != MouseButtons.Left) return;
+            Usage.Hit(Visible ? "tray.click_hide" : "tray.click_show");
+            ToggleOverlay();
         }
 
         private void ToggleOverlay()
@@ -375,9 +491,11 @@ namespace DevMonitor
             if (Visible)
             {
                 Hide();
+                Usage.SetState("overlay_visible", false);
                 return;
             }
             Show();
+            Usage.SetState("overlay_visible", true);
             lastSignature = null;
             OnRefreshTick(this, EventArgs.Empty);
         }
@@ -414,6 +532,7 @@ namespace DevMonitor
             bool wasEnabled = Autostart.IsEnabled();
             string problem = wasEnabled ? Autostart.Disable() : Autostart.Enable(Application.ExecutablePath);
             isStartupEnabled = Autostart.IsEnabled();
+            Usage.SetState("autostart", isStartupEnabled.Value);
             if (problem != null)
             {
                 MessageBox.Show(problem, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -422,14 +541,14 @@ namespace DevMonitor
             string message = isStartupEnabled.Value
                 ? "DevMonitor будет запускаться при входе в Windows (через 20 с, с правами администратора)."
                 : "Автозапуск при входе в Windows выключен.";
-            trayIcon.ShowBalloonTip(4000, Text, message, ToolTipIcon.Info);
+            ShowBalloon(message, ToolTipIcon.Info);
         }
 
         private void ShowSettings()
         {
             if (settingsForm == null || settingsForm.IsDisposed)
             {
-                settingsForm = new SettingsForm();
+                settingsForm = new SettingsForm(UpdateUsageState);
                 settingsForm.Show();
                 return;
             }

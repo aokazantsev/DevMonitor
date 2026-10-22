@@ -56,7 +56,7 @@ namespace DevMonitor
                 AppIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        private static bool IsElevated()
+        internal static bool IsElevated()
         {
             using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
             {

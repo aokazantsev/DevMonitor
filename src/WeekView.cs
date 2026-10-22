@@ -42,6 +42,7 @@ namespace DevMonitor
             layout.Controls.Add(chart, 0, 3);
             Controls.Add(layout);
             metricBox.SelectedIndexChanged += delegate { UpdateChart(); };
+            metricBox.SelectionChangeCommitted += delegate { Usage.Hit("stats.week_metric"); };
         }
 
         public void Reload()
@@ -60,9 +61,17 @@ namespace DevMonitor
         {
             FlowLayoutPanel toolbar = StatisticsStyle.CreateToolbar(Font);
             ConfigureButton(previousWeekButton, "‹ Прошлая неделя");
-            previousWeekButton.Click += delegate { ChangeWeek(-DaysInWeek); };
+            previousWeekButton.Click += delegate
+            {
+                Usage.Hit("stats.week_previous");
+                ChangeWeek(-DaysInWeek);
+            };
             ConfigureButton(nextWeekButton, "Следующая неделя ›");
-            nextWeekButton.Click += delegate { ChangeWeek(DaysInWeek); };
+            nextWeekButton.Click += delegate
+            {
+                Usage.Hit("stats.week_next");
+                ChangeWeek(DaysInWeek);
+            };
             rangeLabel.AutoSize = true;
             rangeLabel.ForeColor = StatisticsStyle.TextPrimary;
             rangeLabel.Font = new Font(Font, FontStyle.Bold);

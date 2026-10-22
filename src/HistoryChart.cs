@@ -91,6 +91,7 @@ namespace DevMonitor
             base.OnMouseClick(e);
             DateTime? day = HitLegend(e.Location);
             if (!day.HasValue) return;
+            Usage.Hit("stats.day_toggle");
             visibility.Toggle(day.Value);
             Invalidate();
         }

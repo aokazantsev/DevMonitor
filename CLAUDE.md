@@ -77,7 +77,7 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
   `installer\setup\{SetupForm, Installation, InstallTarget, Payload, SetupOption, SetupField,
   InstallRequest, SetupProgram, SetupLog}.cs`, `installer\common\{UninstallRegistration, RunningApp, InstallFolder}.cs`,
   `installer\uninstall\UninstallProgram.cs`, `src\{AboutForm, CrashReportConsent, CrashUploader, UpdateChecker,
-  UpdateForm, UpdateRelease, SystemTools}.cs`. `installer\make-payload.ps1` отличается только переменными в начале;
+  UpdateForm, UpdateRelease, SystemTools, Usage, UsageDay, UsageConsent, AutoUpdateCheck, UpdateWatcher}.cs`. `installer\make-payload.ps1` отличается только переменными в начале;
   `build.cmd` и `build-installer.cmd` — тоже, кроме AgentGlow, у которого они свои (рекурсивная сборка `src`, общий
   список исходников для установщика). Поменял общий файл — та же правка в остальных проектах. У AgentProxy часть
   общих файлов расходится осознанно (установка без прав, HKCU, тихий режим) — список в его `CLAUDE.md`;
@@ -101,6 +101,10 @@ Android Studio / Gradle / Kotlin, история по минутам, стати
   - сбои окружения программа по возможности лечит сама; проблема и починка видны на значке в трее
     (метки ошибки и починки), в подсказке, меню и журнале. Свои проблемы — только в трее и
     уведомлениях, не в основном результате программы.
+- **Статистика использования** (`Usage.Hit` — события, `Usage.SetState` — состояние): новое событие или ключ
+  состояния — сначала строка в каталоге `USAGE_CATALOG` в `D:\aokazantsev-site\panel\panel.py` и деплой панели, потом
+  выпуск программы: сервер отбрасывает имена не из каталога. Значения состояния — только bool, неотрицательное число
+  или короткое строчное перечисление: никаких путей, имён, адресов и свободного текста.
 - **Меню трея:** блок состояния; действия приложения; «Настройки…», «Журнал» (если есть),
   «Запускать при входе в Windows», «Проверить обновление…», «О приложении…»; «Выход».
 - **Установщик:** права администратора, выбор папки (по умолчанию `C:\Program Files\<Имя>`), галочка

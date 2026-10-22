@@ -36,6 +36,7 @@ namespace DevMonitor
             layout.Controls.Add(chart, 0, 3);
             Controls.Add(layout);
             metricBox.SelectedIndexChanged += delegate { RefreshLive(); };
+            metricBox.SelectionChangeCommitted += delegate { Usage.Hit("stats.today_metric"); };
         }
 
         public void RefreshLive()

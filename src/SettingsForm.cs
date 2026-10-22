@@ -14,10 +14,15 @@ namespace DevMonitor
         private readonly Label gpuZones = new Label();
         private readonly Label status = new Label();
         private readonly Button saveButton = new Button();
+        private readonly CheckBox autoUpdate = new CheckBox();
+        private readonly CheckBox usageStatistics = new CheckBox();
+        private readonly Action optionsChanged;
         private string readProblem;
+        private bool hardwareNeedsSave;
 
-        public SettingsForm()
+        public SettingsForm(Action optionsChanged)
         {
+            this.optionsChanged = optionsChanged;
             Text = "DevMonitor — настройки";
             Font = new Font("Segoe UI", 9.5f);
             BackColor = StatisticsStyle.Surface;
@@ -41,8 +46,9 @@ namespace DevMonitor
             if (saved.ReadError != null) readProblem = "Не удалось прочитать " + AppSettings.FilePath + ": " + saved.ReadError + " В списках — то, что действует сейчас.";
             FillBox(cpuBox, HardwareKind.Cpu, saved.CpuProfileName ?? ActiveHardware.Cpu.Name);
             FillBox(gpuBox, HardwareKind.Gpu, saved.GpuProfileName ?? ActiveHardware.Gpu.Name);
-            cpuBox.SelectedIndexChanged += delegate { OnSelectionChanged(); };
-            gpuBox.SelectedIndexChanged += delegate { OnSelectionChanged(); };
+            hardwareNeedsSave = readProblem != null || IsMissing(HardwareKind.Cpu, saved.CpuProfileName) || IsMissing(HardwareKind.Gpu, saved.GpuProfileName);
+            cpuBox.SelectedIndexChanged += delegate { OnHardwareChosen(); };
+            gpuBox.SelectedIndexChanged += delegate { OnHardwareChosen(); };
             OnSelectionChanged();
         }
 
@@ -72,6 +78,10 @@ namespace DevMonitor
             List<string> adapters = InstalledHardware.DisplayAdapterNames();
             layout.Controls.Add(Caption("В этом ПК: " + (adapters.Count == 0 ? "не определена" : string.Join(", ", adapters.ToArray())), false));
 
+            layout.Controls.Add(Section("Программа"));
+            layout.Controls.Add(Option(autoUpdate, "Раз в сутки проверять обновление и сообщать о новой версии", AutoUpdateCheck.IsEnabled));
+            layout.Controls.Add(Option(usageStatistics, "Отправлять автору анонимную статистику использования", UsageConsent.IsGiven));
+
             status.AutoSize = true;
             status.MaximumSize = new Size(unit * 34, 0);
             status.ForeColor = StatisticsStyle.TextPrimary;
@@ -99,6 +109,16 @@ namespace DevMonitor
             box.Width = Font.Height * 24;
             box.MaxDropDownItems = 20;
             box.Margin = new Padding(0, Font.Height / 4, 0, Font.Height / 4);
+            return box;
+        }
+
+        private CheckBox Option(CheckBox box, string text, bool isChecked)
+        {
+            box.Text = text;
+            box.AutoSize = true;
+            box.Checked = isChecked;
+            box.ForeColor = StatisticsStyle.TextPrimary;
+            box.Margin = new Padding(0, Font.Height / 4, 0, 0);
             return box;
         }
 
@@ -140,14 +160,23 @@ namespace DevMonitor
             foreach (HardwareProfile profile in HardwareCatalog.OfKind(catalog, kind)) box.Items.Add(profile);
             HardwareProfile selected = HardwareCatalog.Find(catalog, kind, selectedName);
             if (selected != null) box.SelectedItem = selected;
-            else if (box.Items.Count > 0) box.SelectedIndex = 0;
+        }
+
+        private bool IsMissing(HardwareKind kind, string savedName)
+        {
+            return savedName != null && catalog.Count > 0 && HardwareCatalog.Find(catalog, kind, savedName) == null;
+        }
+
+        private void OnHardwareChosen()
+        {
+            hardwareNeedsSave = true;
+            OnSelectionChanged();
         }
 
         private void OnSelectionChanged()
         {
             cpuZones.Text = ZonesText(cpuBox.SelectedItem as HardwareProfile);
             gpuZones.Text = ZonesText(gpuBox.SelectedItem as HardwareProfile);
-            saveButton.Enabled = cpuBox.SelectedItem != null && gpuBox.SelectedItem != null;
             status.Text = catalog.Count == 0
                 ? "Справочник hardware.csv не найден рядом с DevMonitor.exe — выбирать не из чего."
                 : "Сейчас действует: " + ActiveHardware.Cpu.Name + ", " + ActiveHardware.Gpu.Name
@@ -171,21 +200,68 @@ namespace DevMonitor
 
         private void Save()
         {
-            var cpu = (HardwareProfile)cpuBox.SelectedItem;
-            var gpu = (HardwareProfile)gpuBox.SelectedItem;
+            var problems = new List<string>();
+            string hardwareResult = SaveHardware(problems);
+            string optionsProblem = SaveOptions();
+            if (optionsProblem != null)
+            {
+                AppLog.Append("options not saved: " + optionsProblem);
+                problems.Add("Не удалось сохранить выбор проверки обновлений и статистики: " + optionsProblem);
+            }
+            Usage.Hit("settings.save");
+            optionsChanged();
+            if (problems.Count == 0)
+            {
+                status.Text = hardwareResult;
+                return;
+            }
+            string message = string.Join(Environment.NewLine, problems.ToArray());
+            status.Text = message;
+            MessageBox.Show(this, message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        private string SaveHardware(List<string> problems)
+        {
+            var cpu = cpuBox.SelectedItem as HardwareProfile;
+            var gpu = gpuBox.SelectedItem as HardwareProfile;
+            if (!hardwareNeedsSave) return "Сохранено.";
+            if (cpu == null || gpu == null)
+            {
+                problems.Add("Железо не сохранено: выбери в списках и процессор, и видеокарту.");
+                return null;
+            }
             var settings = new AppSettings { CpuProfileName = cpu.Name, GpuProfileName = gpu.Name };
             string saveProblem = settings.Save();
             if (saveProblem != null)
             {
                 AppLog.Append("settings not saved: " + saveProblem);
-                status.Text = "Не удалось записать " + AppSettings.FilePath + ": " + saveProblem;
-                return;
+                problems.Add("Не удалось записать " + AppSettings.FilePath + ": " + saveProblem);
+                return null;
             }
+            hardwareNeedsSave = false;
             readProblem = null;
             bool isAlreadyActive = cpu.Name == ActiveHardware.Cpu.Name && gpu.Name == ActiveHardware.Gpu.Name;
-            status.Text = isAlreadyActive
+            return isAlreadyActive
                 ? "Сохранено. Этот выбор уже действует."
                 : "Сохранено. Применится после перезапуска: трей → Выход, затем ярлык DevMonitor.";
+        }
+
+        private string SaveOptions()
+        {
+            try
+            {
+                if (autoUpdate.Checked != AutoUpdateCheck.IsEnabled) AutoUpdateCheck.Set(autoUpdate.Checked);
+                if (usageStatistics.Checked != UsageConsent.IsGiven) Usage.SetConsent(usageStatistics.Checked);
+                return null;
+            }
+            catch (System.IO.IOException error)
+            {
+                return error.Message;
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                return error.Message;
+            }
         }
     }
 }

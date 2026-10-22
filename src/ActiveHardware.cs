@@ -17,12 +17,25 @@ namespace DevMonitor
 
         private static HardwareProfile selectedGpu;
 
+        public static bool IsManualChoice { get; private set; }
+
+        public static bool IsCpuInCatalog
+        {
+            get { return Cpu != FallbackCpu; }
+        }
+
+        public static bool IsGpuInCatalog
+        {
+            get { return selectedGpu != FallbackGpu; }
+        }
+
         public static void Select(AppSettings settings)
         {
             List<HardwareProfile> catalog = HardwareCatalog.Load();
             Cpu = Choose(catalog, HardwareKind.Cpu, settings.CpuProfileName, new[] { InstalledHardware.ProcessorName() }) ?? FallbackCpu;
             selectedGpu = Choose(catalog, HardwareKind.Gpu, settings.GpuProfileName, InstalledHardware.DisplayAdapterNames()) ?? FallbackGpu;
             Gpu = WithResolvedZones(selectedGpu);
+            IsManualChoice = settings.CpuProfileName != null || settings.GpuProfileName != null;
             AppLog.Append("hardware: cpu=" + Cpu.Name + " (" + (settings.CpuProfileName == null ? "detected" : "from settings") + ")"
                 + ", gpu=" + Gpu.Name + " (" + (settings.GpuProfileName == null ? "detected" : "from settings") + ")");
         }
