@@ -34,7 +34,7 @@ namespace DevMonitor
         {
             bool hasDriver = PawnIoDriver.IsInstalled();
             string installed = UninstallRegistration.InstalledLocation();
-            bool isUpdate = installed != null && Directory.Exists(installed) && InstallFolder.IsOurs(installed);
+            bool isUpdate = InstallTarget.IsUpdate(installed);
             return new List<SetupOption>
             {
                 new SetupOption
