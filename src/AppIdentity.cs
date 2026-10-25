@@ -6,7 +6,7 @@ namespace DevMonitor
     internal static class AppIdentity
     {
         public const string Name = "DevMonitor";
-        public const string Version = "1.15";
+        public const string Version = "1.16";
         public const string UpdateSetupArguments = "";
         public const string UpdateKeeps = "настройки и история сохранятся";
         public const string ExecutableName = "DevMonitor.exe";

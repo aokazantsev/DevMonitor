@@ -14,7 +14,6 @@ namespace DevMonitor
         private const int DeleteAttempts = 5;
         private const int DeleteRetryMs = 300;
         private static readonly string[] StaleSensorMarkers = { "sensor-gpu.pending", "sensor-gpu-limits.pending" };
-        private const string StoppedHint = "DevMonitor, если был запущен, остановлен: повтори установку, когда исправишь причину.";
 
         public const string Intro =
             "Оверлей поверх всех окон: загрузка и температура CPU и GPU, ОЗУ, видеопамять, память Android Studio, "
@@ -108,11 +107,11 @@ namespace DevMonitor
             }
             catch (IOException error)
             {
-                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + ").");
             }
             catch (UnauthorizedAccessException error)
             {
-                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+                throw new InvalidOperationException("Не удалось записать выбор об отчётах о сбоях в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + ").");
             }
             SetupLog.Append("crash reports: " + request.Has(CrashReportConsent.OptionKey));
             try
@@ -121,11 +120,11 @@ namespace DevMonitor
             }
             catch (IOException error)
             {
-                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + ").");
             }
             catch (UnauthorizedAccessException error)
             {
-                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + "). " + StoppedHint);
+                throw new InvalidOperationException("Не удалось записать выбор о статистике использования в папку " + AppIdentity.DataDirectory + " (" + error.Message.TrimEnd('.') + ").");
             }
             SetupLog.Append("usage statistics: " + request.Has(UsageConsent.OptionKey));
         }
@@ -145,7 +144,7 @@ namespace DevMonitor
                 string settingsPath = Path.Combine(AppIdentity.DataDirectory, "settings.txt");
                 string settingsProblem = DeleteSetting(settingsPath);
                 SetupLog.Append("settings.txt reset: " + (settingsProblem ?? "done"));
-                if (settingsProblem != null) throw new InvalidOperationException("Не удалось сбросить настройки — файл " + settingsPath + " не удалился (" + settingsProblem + "). " + StoppedHint);
+                if (settingsProblem != null) throw new InvalidOperationException("Не удалось сбросить настройки — файл " + settingsPath + " не удалился (" + settingsProblem + ").");
                 string positionPath = Path.Combine(AppIdentity.DataDirectory, "position.txt");
                 string positionProblem = DeleteSetting(positionPath);
                 SetupLog.Append("position.txt reset: " + (positionProblem ?? "done"));
