@@ -75,6 +75,7 @@ namespace DevMonitor
         private DateTime lastSlowTickLogUtc = DateTime.MinValue;
         private const int SlowTickMs = 2000;
         private bool? isStartupEnabled;
+        private bool startupQueryRunning;
         private const int TrayTextLimit = 63;
         private const string TrayIconResource = "DevMonitor.app.ico";
         private const int BalloonMs = 4000;
@@ -170,8 +171,12 @@ namespace DevMonitor
 
         private void UpdateUsageState()
         {
-            if (!isStartupEnabled.HasValue) isStartupEnabled = Autostart.IsEnabled();
-            Usage.SetState("autostart", isStartupEnabled.Value);
+            if (isStartupEnabled.HasValue) Usage.SetState("autostart", isStartupEnabled.Value);
+            else if (!startupQueryRunning)
+            {
+                startupQueryRunning = true;
+                System.Threading.ThreadPool.QueueUserWorkItem(state => OnStartupQueried(QueryStartup()));
+            }
             Usage.SetState("auto_update", AutoUpdateCheck.IsEnabled);
             Usage.SetState("crash_reports", CrashReportConsent.IsGiven);
             Usage.SetState("elevated", Program.IsElevated());
@@ -180,6 +185,37 @@ namespace DevMonitor
             Usage.SetState("cpu_in_catalog", ActiveHardware.IsCpuInCatalog);
             Usage.SetState("gpu_in_catalog", ActiveHardware.IsGpuInCatalog);
             UpdateSensorState();
+        }
+
+        private static bool? QueryStartup()
+        {
+            try
+            {
+                return Autostart.IsEnabled();
+            }
+            catch (Exception error)
+            {
+                AppLog.Append("autostart query failed: " + error.Message);
+                return null;
+            }
+        }
+
+        private void OnStartupQueried(bool? enabled)
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    startupQueryRunning = false;
+                    if (isStartupEnabled.HasValue || !enabled.HasValue) return;
+                    isStartupEnabled = enabled;
+                    Usage.SetState("autostart", enabled.Value);
+                });
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
 
         private void UpdateSensorState()

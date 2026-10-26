@@ -225,6 +225,12 @@ namespace DevMonitor
             var cpu = cpuBox.SelectedItem as HardwareProfile;
             var gpu = gpuBox.SelectedItem as HardwareProfile;
             if (!hardwareNeedsSave) return "Сохранено.";
+            if (catalog.Count == 0)
+            {
+                problems.Add("Железо не сохранено: справочник hardware.csv рядом с DevMonitor.exe не найден или пуст."
+                    + (readProblem != null ? " " + readProblem : ""));
+                return null;
+            }
             if (cpu == null || gpu == null)
             {
                 problems.Add("Железо не сохранено: выбери в списках и процессор, и видеокарту.");
