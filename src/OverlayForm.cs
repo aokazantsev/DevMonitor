@@ -67,6 +67,7 @@ namespace DevMonitor
         private readonly StringFormat segmentFormat = CreateSegmentFormat();
         private string lastSignature;
         private readonly NotifyIcon trayIcon = new NotifyIcon();
+        private const string OverlayMenuKey = "overlay";
         private readonly MenuClickToggle menuToggle = new MenuClickToggle();
         private readonly ToolStripMenuItem toggleItem = new ToolStripMenuItem();
         private readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Запускать при входе в Windows");
@@ -229,14 +230,16 @@ namespace DevMonitor
         {
             base.OnMouseUp(e);
             if (e.Button != MouseButtons.Right) return;
-            if (menuToggle.ConsumeJustClosed("", Environment.TickCount, SystemInformation.DoubleClickTime)) return;
+            if (menuToggle.ConsumeRelease(OverlayMenuKey)) return;
             Usage.Hit("overlay.menu");
+            menuToggle.Opened(OverlayMenuKey);
             trayIcon.ContextMenuStrip.Show(this, e.Location);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
+            menuToggle.PressStarted(e.Button == MouseButtons.Right ? OverlayMenuKey : null, Environment.TickCount);
             if (e.Button != MouseButtons.Left) return;
             ReleaseCapture();
             SendMessage(Handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
@@ -421,7 +424,7 @@ namespace DevMonitor
         private ContextMenuStrip BuildMenu()
         {
             var menu = new ContextMenuStrip();
-            menu.Closed += (sender, e) => menuToggle.OnClosed(e.CloseReason, "", Environment.TickCount);
+            menu.Closed += (sender, e) => menuToggle.OnClosed(e.CloseReason, Environment.TickCount);
             retrySensorsItem.Click += delegate
             {
                 Usage.Hit("menu.retry_sensors");

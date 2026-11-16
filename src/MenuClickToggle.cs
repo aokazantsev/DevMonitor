@@ -1,26 +1,39 @@
-using System;
 using System.Windows.Forms;
 
 namespace DevMonitor
 {
     internal sealed class MenuClickToggle
     {
-        private bool closedByClick;
-        private int closedAt;
+        private const int PressWindowMs = 250;
+        private string openedKey;
         private string closedKey;
+        private int closedAt;
+        private string suppressedKey;
 
-        public void OnClosed(ToolStripDropDownCloseReason reason, string key, int now)
+        public void Opened(string key)
         {
-            closedByClick = reason == ToolStripDropDownCloseReason.AppClicked;
-            closedAt = now;
-            closedKey = key;
+            openedKey = key;
         }
 
-        public bool ConsumeJustClosed(string key, int now, int window)
+        public void OnClosed(ToolStripDropDownCloseReason reason, int now)
         {
-            bool result = closedByClick && closedKey == key && unchecked(now - closedAt) >= 0 && unchecked(now - closedAt) < window;
-            closedByClick = false;
-            return result;
+            closedKey = reason == ToolStripDropDownCloseReason.AppClicked ? openedKey : null;
+            closedAt = now;
+            openedKey = null;
+        }
+
+        public void PressStarted(string key, int now)
+        {
+            int elapsed = unchecked(now - closedAt);
+            suppressedKey = key != null && key == closedKey && elapsed >= 0 && elapsed < PressWindowMs ? key : null;
+            closedKey = null;
+        }
+
+        public bool ConsumeRelease(string key)
+        {
+            bool suppressed = key != null && key == suppressedKey;
+            suppressedKey = null;
+            return suppressed;
         }
     }
 }
