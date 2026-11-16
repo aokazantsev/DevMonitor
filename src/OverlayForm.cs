@@ -67,6 +67,7 @@ namespace DevMonitor
         private readonly StringFormat segmentFormat = CreateSegmentFormat();
         private string lastSignature;
         private readonly NotifyIcon trayIcon = new NotifyIcon();
+        private readonly MenuClickToggle menuToggle = new MenuClickToggle();
         private readonly ToolStripMenuItem toggleItem = new ToolStripMenuItem();
         private readonly ToolStripMenuItem startupItem = new ToolStripMenuItem("Запускать при входе в Windows");
         private readonly ToolStripMenuItem sensorProblemItem = new ToolStripMenuItem { Enabled = false };
@@ -228,6 +229,7 @@ namespace DevMonitor
         {
             base.OnMouseUp(e);
             if (e.Button != MouseButtons.Right) return;
+            if (menuToggle.ConsumeJustClosed("", Environment.TickCount, SystemInformation.DoubleClickTime)) return;
             Usage.Hit("overlay.menu");
             trayIcon.ContextMenuStrip.Show(this, e.Location);
         }
@@ -419,6 +421,7 @@ namespace DevMonitor
         private ContextMenuStrip BuildMenu()
         {
             var menu = new ContextMenuStrip();
+            menu.Closed += (sender, e) => menuToggle.OnClosed(e.CloseReason, "", Environment.TickCount);
             retrySensorsItem.Click += delegate
             {
                 Usage.Hit("menu.retry_sensors");
